@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"uooobarry/liar-groundhog/internal/session"
+    "uooobarry/liar-groundhog/internal/types"
 
 	"github.com/gorilla/websocket"
 )
@@ -26,16 +27,16 @@ var rooms = struct {
 }
 
 // handleLogin handles the login request
-func handleLogin(conn *websocket.Conn, msg Message) string {
+func handleLogin(conn *websocket.Conn, msg types.Message) string {
 	if msg.Username == "" {
 		sendError(conn, "Username is required for login")
 		return ""
 	}
 
-	userUUID := session.CreateSession(msg.Username)
+	userUUID, _ := session.CreateSession(conn, msg.Username)
 	
 	// Send response to the client
-	response := Message{
+	response := types.Message{
 		Type:    "login",
 		Username: msg.Username,
 		UUID:    userUUID,
@@ -69,7 +70,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	// Loop to read and write messages
 	for {
-		var msg Message
+		var msg types.Message
 		// Read JSON message from client
 		err := conn.ReadJSON(&msg)
 		if err != nil {
@@ -87,7 +88,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 }
 
 func sendError(conn *websocket.Conn, errMsg string) {
-	response := Message{
+	response := types.Message{
 		Type:    "error",
 		Content: errMsg,
 	}
