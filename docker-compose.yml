@@ -13,3 +13,17 @@ services:
       LOG_LEVEL: "info"
     volumes:
       - ./server:/app
+  vue-client-dev:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      target: base
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app # Mount the local project directory
+      - /app/node_modules # Ensure node_modules is local to the container
+      - /app/.pnpm-store # Ensure node_modules is local to the container
+    environment:
+      - NODE_ENV=development
+    command: ["pnpm", "dev"]
