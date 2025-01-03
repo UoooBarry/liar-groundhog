@@ -1,0 +1,15 @@
+services:
+  go-server-dev:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    environment:
+      # Example environment variables
+      ENV: "development"
+      LOG_LEVEL: "info"
+    volumes:
+      - ./server:/app
