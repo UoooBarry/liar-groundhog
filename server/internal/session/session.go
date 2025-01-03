@@ -21,6 +21,11 @@ var sessions = struct {
 	data: make(map[string]Session),
 }
 
+func FindSession(uuid string) (Session, bool) {
+	session, exist := sessions.data[uuid]
+	return session, exist
+}
+
 // CreateSession generates a new session for a username
 func CreateSession(username string) string {
 	sessions.Lock()
