@@ -4,23 +4,11 @@ import (
 	"log"
 	"net/http"
 	"sync"
-	"fmt"
+
+	"uooobarry/liar-groundhog/internal/session"
 
 	"github.com/gorilla/websocket"
-	"github.com/google/uuid"
 )
-
-type Session struct {
-	Username     string // User's username
-	RoomUUID string // UUID of the game room the user is in
-}
-
-type Message struct {
-	Type    string `json:"type"`    // Type of the message (e.g., "login")
-	Username string `json:"username,omitempty"` // Username for login
-	UUID    string `json:"uuid,omitempty"`    // UUID generated for the user
-	Content string `json:"content,omitempty"` // Additional content
-}
 
 // Define a global upgrader to upgrade HTTP connections to WebSocket
 var upgrader = websocket.Upgrader{
@@ -28,14 +16,6 @@ var upgrader = websocket.Upgrader{
 		// Allow all connections
 		return true
 	},
-}
-
-// In-memory storage for user sessions
-var sessions = struct {
-	sync.Mutex
-	data map[string]Session // uuid -> Session
-}{
-	data: make(map[string]Session),
 }
 
 var rooms = struct {
@@ -52,7 +32,7 @@ func handleLogin(conn *websocket.Conn, msg Message) string {
 		return ""
 	}
 
-	userUUID := createSession(msg.Username)
+	userUUID := session.CreateSession(msg.Username)
 	
 	// Send response to the client
 	response := Message{
@@ -68,35 +48,6 @@ func handleLogin(conn *websocket.Conn, msg Message) string {
 	return userUUID
 }
 
-func createSession(username string) string {
-	sessions.Lock()
-	defer sessions.Unlock()
-
-	uuid := uuid.NewString()
-	
-	session := Session{
-		Username: username,
-	}
-	sessions.data[uuid] = session
-
-	return uuid
-}
-
-// removeSession removes a username from the sessions map
-func removeSession(uuid string) error {
-	sessions.Lock()
-	defer sessions.Unlock()
-	
-	session, exist := sessions.data[uuid]
-	if !exist {
-		return fmt.Errorf("Session '%s' is not exist", uuid)
-	} else {
-		delete(sessions.data, uuid)
-		log.Printf("Session for user '%s' has been released", session.Username)
-	}
-	return nil
-}
-
 // WebSocket handler
 func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Upgrade the HTTP connection to a WebSocket connection
@@ -109,7 +60,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	var userUUID string
 	defer conn.Close()
 	defer func() {
-		error := removeSession(userUUID)
+		error := session.RemoveSession(userUUID)
 		if error != nil {
 			sendError(conn, error.Error())
 		}
