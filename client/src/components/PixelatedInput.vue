@@ -1,11 +1,16 @@
 <template>
   <div>
-    <input class="pixelated-input" type="text" v-bind="$attrs"></input>
+    <input class="pixelated-input" type="text" v-bind="$attrs" v-model="text"></input>
   </div>
 </template>
 
 <script setup>
-
+	import { defineModel } from 'vue'
+	const text = defineModel({
+		type: String,
+		required: false,
+		default: ''
+	})
 </script>
 
 <style scoped>

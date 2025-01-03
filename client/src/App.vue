@@ -1,7 +1,7 @@
 <template>
   <link href='https://fonts.googleapis.com/css?family=VT323' rel='stylesheet' type='text/css'>
   <div class="container">
-    <LoginScreen v-if="sessionStore.isLoggedIn"/>
+    <LoginScreen v-if="!sessionStore.isLoggedIn"/>
   </div>
 </template>
 
@@ -10,7 +10,6 @@ import LoginScreen from './views/LoginScreen.vue';
 import { useSessionsStore } from './stores/SessionStores';
 
 const sessionStore = useSessionsStore();
-
 </script>
 
 <style scoped>

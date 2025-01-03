@@ -13,6 +13,8 @@ services:
       LOG_LEVEL: "info"
     volumes:
       - ./server:/app
+    stdin_open: true
+    tty: true
   vue-client-dev:
     build:
       context: ./client
@@ -22,9 +24,13 @@ services:
       - "5173:5173"
     volumes:
       - ./client:/app # Mount the local project directory
-      - /app/node_modules # Ensure node_modules is local to the container
-      - /app/.pnpm-store # Ensure node_modules is local to the container
+      - dev_pnpm_store:/node_modules # Ensure node_modules is local to the container
+      - dev_pnpm_virtual:/.pnpm-store # Ensure node_modules is local to the container
     environment:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
     command: ["pnpm", "dev"]
+
+volumes:
+  dev_pnpm_store:
+  dev_pnpm_virtual:

@@ -18,6 +18,8 @@ const sessionStore = useSessionsStore();
 const username = ref("");
 const login = () => {
   sessionStore.login(username.value);
+  console.log(username.value)
+  console.log(sessionStore.isLoggedIn);
 }
 </script>
 
