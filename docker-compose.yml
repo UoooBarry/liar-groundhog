@@ -26,4 +26,5 @@ services:
       - /app/.pnpm-store # Ensure node_modules is local to the container
     environment:
       - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
     command: ["pnpm", "dev"]
