@@ -41,5 +41,4 @@ jobs:
       with:
         file: docker-compose.yml
         service: go-server-dev
-        command: |
-          make go-test
+        command: scripts/test.sh
