@@ -1,9 +1,9 @@
 package utils
 
 import (
-    "log"
 	"github.com/gorilla/websocket"
-    "uooobarry/liar-groundhog/internal/types"
+	"log"
+	"uooobarry/liar-groundhog/internal/types"
 )
 
 func SendError(conn *websocket.Conn, errMsg string) {

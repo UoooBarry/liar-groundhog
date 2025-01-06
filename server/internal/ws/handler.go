@@ -60,10 +60,10 @@ func handleLogin(conn *websocket.Conn, msg types.Message) *string {
 
 func handleRoomCreate(conn *websocket.Conn, msg types.Message) {
 	room, err := session.CreateRoom(msg.SessionUUID)
-    if err != nil {
-        utils.SendError(conn, err.Error())
-        return
-    }
+	if err != nil {
+		utils.SendError(conn, err.Error())
+		return
+	}
 	response := types.Message{
 		Type:     "room_create",
 		RoomUUID: room.RoomUUID,
@@ -76,12 +76,12 @@ func hanldeRoomJoin(conn *websocket.Conn, msg types.Message) {
 	room, exist := session.FindRoom(msg.RoomUUID)
 	if !exist {
 		utils.SendError(conn, fmt.Sprintf("Room ID '%s' does not exist", msg.RoomUUID))
-        return
+		return
 	}
-    if err := room.AddPlayer(msg.SessionUUID); err != nil {
-        utils.SendError(conn, err.Error())
-        return
-    }
+	if err := room.AddPlayer(msg.SessionUUID); err != nil {
+		utils.SendError(conn, err.Error())
+		return
+	}
 
 	response := types.Message{
 		Type:     "room_join",

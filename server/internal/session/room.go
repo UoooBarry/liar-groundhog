@@ -32,15 +32,15 @@ func CreateRoom(ownerUUID string) (*Room, error) {
 	rooms.Lock()
 	defer rooms.Unlock()
 
-    owner, exist := FindSession(ownerUUID)
+	owner, exist := FindSession(ownerUUID)
 
 	if !exist {
 		return nil, fmt.Errorf("Player session not exist '%s'", ownerUUID)
 	}
 	uuid := uuid.NewString()
-    room := &Room{RoomUUID: uuid, Engine: liar.New()}
+	room := &Room{RoomUUID: uuid, Engine: liar.New()}
 	rooms.data[uuid] = room
-    room.Players = append(room.Players, *owner)
+	room.Players = append(room.Players, *owner)
 
 	log.Printf("Created room UUID '%s'", uuid)
 	return room, nil
@@ -100,7 +100,7 @@ func (room *Room) AddPlayer(playerUUID string) error {
 	}
 	room.Players = append(room.Players, *player)
 	player.RoomUUID = room.RoomUUID
-    room.PublishRoomInfo()
+	room.PublishRoomInfo()
 	return nil
 }
 

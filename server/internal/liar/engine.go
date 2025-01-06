@@ -5,7 +5,6 @@ import (
 	"fmt"
 )
 
-
 // GameState represents the state of the game.
 type GameState string
 

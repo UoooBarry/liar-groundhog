@@ -4,7 +4,13 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
   pull_request:
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
 
 jobs:
   build-and-test:
@@ -39,7 +45,7 @@ jobs:
         file: ./server/Dockerfile
         push: true
         tags: ${{ secrets.DOCKER_IMAGE_TAG }}:dev
-        cache-from: type=registry,ref=user/app:latest
+        cache-from: type=registry,ref=${{ secrets.DOCKER_IMAGE_TAG }}:dev
         cache-to: type=inline
 
     - name: Run Go tests

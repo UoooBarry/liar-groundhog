@@ -26,9 +26,9 @@ var sessions = struct {
 
 func FindSession(uuid string) (*Session, bool) {
 	session, exist := sessions.data[uuid]
-    if !exist {
-        return nil, false
-    }
+	if !exist {
+		return nil, false
+	}
 	return session, exist
 }
 

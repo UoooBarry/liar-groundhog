@@ -1,8 +1,8 @@
 package session_test
 
 import (
+	"strconv"
 	"testing"
-    "strconv"
 
 	"github.com/stretchr/testify/assert"
 	"uooobarry/liar-groundhog/internal/session"
@@ -12,17 +12,17 @@ func TestRoom_AddPlayer(t *testing.T) {
 	// Mock the session creation
 	playerUsername := "testplayer"
 	player := session.CreateSession(nil, playerUsername)
-    playerUUID := player.SessionUUID
+	playerUUID := player.SessionUUID
 
 	room, err := session.CreateRoom(playerUUID)
 
-    t.Run("Added owner successfully", func(t *testing.T) {
-        assert.NoError(t, err)
-        assert.Equal(t, 1, room.PlayerCount())
-    })
+	t.Run("Added owner successfully", func(t *testing.T) {
+		assert.NoError(t, err)
+		assert.Equal(t, 1, room.PlayerCount())
+	})
 
 	t.Run("Add player successfully", func(t *testing.T) {
-        newPlayer := session.CreateSession(nil, "new player")
+		newPlayer := session.CreateSession(nil, "new player")
 		err := room.AddPlayer(newPlayer.SessionUUID)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(room.Players))
@@ -40,14 +40,14 @@ func TestRoom_AddPlayer(t *testing.T) {
 		for i := 1; i < (session.MAX_PLAYERS - 1); i++ {
 			name := "player-" + strconv.Itoa(i)
 			session := session.CreateSession(nil, name)
-            sessionUUID := session.SessionUUID
+			sessionUUID := session.SessionUUID
 			err := room.AddPlayer(sessionUUID)
 			assert.NoError(t, err)
 		}
 
 		// Try adding one more player
 		newPlayer := session.CreateSession(nil, "extraplayer")
-        newPlayerUUID := newPlayer.SessionUUID
+		newPlayerUUID := newPlayer.SessionUUID
 		err := room.AddPlayer(newPlayerUUID)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "The current game room is full.")
