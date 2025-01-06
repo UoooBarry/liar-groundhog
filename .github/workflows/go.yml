@@ -39,12 +39,7 @@ jobs:
     - name: Tests
       uses: cloudposse/github-action-docker-compose-test-run@main
       with:
-        file: server/docker-compose.yml
+        file: docker-compose.yml
         service: go-server-dev
         command: |
           make go-test
-
-    # Clean up Docker containers and images
-    - name: Clean up
-      run: |
-        docker-compose down --rmi local
