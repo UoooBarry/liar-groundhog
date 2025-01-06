@@ -32,14 +32,15 @@ jobs:
         sudo chmod +x /usr/local/bin/docker-compose
         docker-compose --version # Check Docker Compose version to verify the installation 
 
-    # Cache Docker images
-    - name: Cache Docker layers
-      uses: actions/cache@v4
+    - name: Build and push
+      uses: docker/build-push-action@v2
       with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-docker-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-docker-
+        context: ./server
+        file: ./server/Dockerfile
+        push: true
+        tags: ${{ secrets.DOCKER_IMAGE_TAG }}:dev
+        cache-from: type=registry,ref=user/app:latest
+        cache-to: type=inline
 
     - name: Run Go tests
       run: |
