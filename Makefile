@@ -1,5 +1,5 @@
 dev:
-	docker-compose up go-server-dev vue-client-dev
+	docker-compose up go-server-dev vue-client-dev --remove-orphans
 build:
 	docker-compose build
 go-test:

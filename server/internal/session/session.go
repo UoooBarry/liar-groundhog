@@ -19,18 +19,21 @@ type Session struct {
 
 var sessions = struct {
 	sync.Mutex
-	data map[string]Session // uuid -> Session
+	data map[string]*Session // uuid -> Session
 }{
-	data: make(map[string]Session),
+	data: make(map[string]*Session),
 }
 
-func FindSession(uuid string) (Session, bool) {
+func FindSession(uuid string) (*Session, bool) {
 	session, exist := sessions.data[uuid]
+    if !exist {
+        return nil, false
+    }
 	return session, exist
 }
 
 // CreateSession generates a new session for a username
-func CreateSession(conn *websocket.Conn, username string) (string, Session) {
+func CreateSession(conn *websocket.Conn, username string) Session {
 	sessions.Lock()
 	defer sessions.Unlock()
 
@@ -40,9 +43,9 @@ func CreateSession(conn *websocket.Conn, username string) (string, Session) {
 		SessionUUID: uuid,
 		Conn:        conn,
 	}
-	sessions.data[uuid] = session
+	sessions.data[uuid] = &session
 	log.Printf("Created session for user '%s' with UUID '%s'", username, uuid)
-	return uuid, session
+	return session
 }
 
 // RemoveSession deletes a session by UUID

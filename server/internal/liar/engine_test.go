@@ -2,58 +2,10 @@ package liar_test
 
 import (
 	"testing"
-	"strconv"
-	"fmt"
 
 	"github.com/stretchr/testify/assert"
 	"uooobarry/liar-groundhog/internal/liar"
-	"uooobarry/liar-groundhog/internal/session"
 )
-
-func TestEngine_AddPlayer(t *testing.T) {
-	// Mock the session creation
-	playerUsername := "testplayer"
-	playerUUID, _ := session.CreateSession(nil, playerUsername)
-
-	engine := liar.New()
-
-	t.Run("Add player successfully", func(t *testing.T) {
-		err := engine.AddPlayer(playerUUID)
-		fmt.Println(engine.Room.Players)
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(engine.Room.Players))
-		assert.Equal(t, playerUsername, engine.Room.Players[0].Username)
-	})
-
-	t.Run("Player already in the room", func(t *testing.T) {
-		err := engine.AddPlayer(playerUUID) // Add the player again
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "Player 'testplayer' is already in the room")
-	})
-
-	t.Run("Room is full", func(t *testing.T) {
-		// Add more players to fill the room
-		for i := 1; i < liar.MAX_PLAYERS; i++ {
-			name := "player-" + strconv.Itoa(i)
-			sessionUUID, _ := session.CreateSession(nil, name)
-			err := engine.AddPlayer(sessionUUID)
-			assert.NoError(t, err)
-		}
-
-		// Try adding one more player
-		newPlayerUUID, _ := session.CreateSession(nil, "extraplayer")
-		err := engine.AddPlayer(newPlayerUUID)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "The current game room is full.")
-	})
-
-	t.Run("Player session not found", func(t *testing.T) {
-		nonExistentUUID := "non-existent-uuid"
-		err := engine.AddPlayer(nonExistentUUID)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "Player session not exist")
-	})
-}
 
 func TestEngine_StateTransistions(t *testing.T) {
     engine := liar.New()
