@@ -13,6 +13,7 @@ services:
       LOG_LEVEL: "info"
     volumes:
       - ./server:/app
+      - go-mod-cache:/go/pkg/mod
   vue-client-dev:
     build:
       context: ./client
@@ -27,3 +28,5 @@ services:
     environment:
       - NODE_ENV=development
     command: ["pnpm", "dev"]
+volumes:
+  go-mod-cache:

@@ -6,12 +6,15 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 )
 
 // Session represents a user's session
 type Session struct {
-	Username string
-	RoomUUID string
+	SessionUUID string
+	Username    string
+	RoomUUID    string
+	Conn        *websocket.Conn
 }
 
 var sessions = struct {
@@ -21,15 +24,25 @@ var sessions = struct {
 	data: make(map[string]Session),
 }
 
+func FindSession(uuid string) (Session, bool) {
+	session, exist := sessions.data[uuid]
+	return session, exist
+}
+
 // CreateSession generates a new session for a username
-func CreateSession(username string) string {
+func CreateSession(conn *websocket.Conn, username string) (string, Session) {
 	sessions.Lock()
 	defer sessions.Unlock()
 
 	uuid := uuid.NewString()
-	sessions.data[uuid] = Session{Username: username}
+	session := Session{
+		Username:    username,
+		SessionUUID: uuid,
+		Conn:        conn,
+	}
+	sessions.data[uuid] = session
 	log.Printf("Created session for user '%s' with UUID '%s'", username, uuid)
-	return uuid
+	return uuid, session
 }
 
 // RemoveSession deletes a session by UUID
