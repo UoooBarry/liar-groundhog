@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - "**/feature/**"
   pull_request:
 
 jobs:
@@ -36,15 +35,14 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-docker-
 
-    # Build the Docker images
-    - name: Build dev images
-      run: |
-        docker-compose -f docker-compose.yml build --pull
-
     # Run go tests inside the Docker container
-    - name: Run Go tests
-      run: |
-        make go-test
+    - name: Tests
+      uses: cloudposse/github-action-docker-compose-test-run@main
+      with:
+        file: server/docker-compose.yml
+        service: go-server-dev
+        command: |
+          make go-test
 
     # Clean up Docker containers and images
     - name: Clean up
