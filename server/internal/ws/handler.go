@@ -1,7 +1,6 @@
 package ws
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -57,38 +56,6 @@ func handleLogin(conn *websocket.Conn, msg types.Message) (string, error) {
 	return user.SessionUUID, nil
 }
 
-func handleRoomCreate(conn *websocket.Conn, msg types.Message) error {
-	room, err := session.CreateRoom(msg.SessionUUID)
-	if err != nil {
-		return err
-	}
-	response := types.Message{
-		Type:     "room_create",
-		RoomUUID: room.RoomUUID,
-		Content:  "Room create successful",
-	}
-	utils.SendResponse(conn, response)
-	return nil
-}
-
-func handleRoomJoin(conn *websocket.Conn, msg types.Message) error {
-	room, exist := session.FindRoom(msg.RoomUUID)
-	if !exist {
-		return appErrors.NewClientError(fmt.Sprintf("Room ID '%s' does not exist", msg.RoomUUID))
-	}
-	if err := room.AddPlayer(msg.SessionUUID); err != nil {
-		return err
-	}
-
-	response := types.Message{
-		Type:     "room_join",
-		RoomUUID: room.RoomUUID,
-		Content:  "Room join successful",
-	}
-	utils.SendResponse(conn, response)
-	return nil
-}
-
 // Helper function to handle errors in a consistent manner
 func handleMessageError(conn *websocket.Conn, err error) {
 	if err != nil {
@@ -135,6 +102,9 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		case "room_join":
 			err = handleRoomJoin(conn, msg)
 			handleMessageError(conn, err)
+        case "room_start":
+            err = handleRoomStart(conn, msg)
+            handleMessageError(conn, err)
 		default:
 			handleMessageError(conn, appErrors.NewClientError("Unknown message type"))
 		}

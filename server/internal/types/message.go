@@ -21,5 +21,6 @@ type ActionMessage struct {
 type RoomInfoMessage struct {
 	Type        string                `json:"type"` // Type of the message (e.g., "login")
 	PlayerCount int                   `json:"player_count"`
-	PlayerList  []PublicPlayerMessage ``
+    PlayerList  []PublicPlayerMessage `json:"player_list"`
+    GameState GameState `json:"game_state"`
 }

@@ -1,23 +1,27 @@
 package liar_test
 
 import (
+    "log"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"uooobarry/liar-groundhog/internal/liar"
+	"uooobarry/liar-groundhog/internal/types"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestEngine_StateTransistions(t *testing.T) {
 	engine := liar.New()
 
 	// Verify initial state is 'preparing'
-	if engine.State != liar.StatePreparing {
+	if engine.State != types.StatePreparing {
 		t.Errorf("expected initial state to be 'preparing', got '%s'", engine.State)
 	}
 
 	// Test start the game
 	t.Run("Able to start the game", func(t *testing.T) {
 		err := engine.StartGame()
+        log.Println(engine.Cards)
 		assert.NoError(t, err)
 	})
 
@@ -43,4 +47,27 @@ func TestEngine_StateTransistions(t *testing.T) {
 		err := engine.ResetGame()
 		assert.NoError(t, err)
 	})
+}
+
+func TestEngine_Cards(t *testing.T) {
+    engine := liar.New()
+
+    t.Run("Able to generate cards", func(t *testing.T) {
+        // Create a map to count the occurrences of each card in the Engine's Cards slice
+        cardCount := make(map[liar.Card]int)
+
+        // Count the occurrences of each card
+        for _, card := range engine.Cards {
+            cardCount[card]++
+        }
+
+        for card, expectedCount := range liar.CardPartition {
+            actualCount, exists := cardCount[card]
+            if !exists {
+                t.Errorf("Card %v not found in the Engine's Cards", card)
+            } else if actualCount != expectedCount {
+                t.Errorf("Expected %v cards of type %v, but found %v", expectedCount, card, actualCount)
+            }
+        }
+    })
 }
