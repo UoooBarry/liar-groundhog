@@ -1,12 +1,12 @@
 package ws
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"sync"
 
+	appErrors "uooobarry/liar-groundhog/internal/errors"
 	"uooobarry/liar-groundhog/internal/session"
 	"uooobarry/liar-groundhog/internal/types"
 	"uooobarry/liar-groundhog/internal/utils"
@@ -31,17 +31,16 @@ var rooms = struct {
 
 func validateUsername(msg types.Message) error {
 	if msg.Username == "" {
-		return errors.New("Username is required for login")
+		return appErrors.NewClientError("Username is required for login")
 	}
 
 	return nil
 }
 
 // handleLogin handles the login request
-func handleLogin(conn *websocket.Conn, msg types.Message) *string {
+func handleLogin(conn *websocket.Conn, msg types.Message) (string, error) {
 	if err := validateUsername(msg); err != nil {
-		utils.SendError(conn, err.Error())
-		return nil
+		return "", err
 	}
 
 	user := session.CreateSession(conn, msg.Username)
@@ -55,14 +54,13 @@ func handleLogin(conn *websocket.Conn, msg types.Message) *string {
 	}
 	utils.SendResponse(conn, response)
 
-	return &user.SessionUUID
+	return user.SessionUUID, nil
 }
 
-func handleRoomCreate(conn *websocket.Conn, msg types.Message) {
+func handleRoomCreate(conn *websocket.Conn, msg types.Message) error {
 	room, err := session.CreateRoom(msg.SessionUUID)
 	if err != nil {
-		utils.SendError(conn, err.Error())
-		return
+		return appErrors.NewClientError(err.Error())
 	}
 	response := types.Message{
 		Type:     "room_create",
@@ -70,17 +68,16 @@ func handleRoomCreate(conn *websocket.Conn, msg types.Message) {
 		Content:  "Room create successful",
 	}
 	utils.SendResponse(conn, response)
+	return nil
 }
 
-func hanldeRoomJoin(conn *websocket.Conn, msg types.Message) {
+func handleRoomJoin(conn *websocket.Conn, msg types.Message) error {
 	room, exist := session.FindRoom(msg.RoomUUID)
 	if !exist {
-		utils.SendError(conn, fmt.Sprintf("Room ID '%s' does not exist", msg.RoomUUID))
-		return
+		return appErrors.NewClientError(fmt.Sprintf("Room ID '%s' does not exist", msg.RoomUUID))
 	}
 	if err := room.AddPlayer(msg.SessionUUID); err != nil {
-		utils.SendError(conn, err.Error())
-		return
+		return appErrors.NewLoggableError(err.Error(), appErrors.WARN)
 	}
 
 	response := types.Message{
@@ -89,6 +86,14 @@ func hanldeRoomJoin(conn *websocket.Conn, msg types.Message) {
 		Content:  "Room join successful",
 	}
 	utils.SendResponse(conn, response)
+	return nil
+}
+
+// Helper function to handle errors in a consistent manner
+func handleMessageError(conn *websocket.Conn, err error) {
+	if err != nil {
+		appErrors.HandleError(conn, err)
+	}
 }
 
 // WebSocket handler
@@ -105,30 +110,33 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		error := session.RemoveSession(userUUID)
 		if error != nil {
-			utils.SendError(conn, error.Error())
+            handleMessageError(conn, appErrors.NewLoggableError(error.Error(), appErrors.ERROR))
 		}
-		log.Println(userUUID)
 	}()
 
 	// Loop to read and write messages
 	for {
 		var msg types.Message
+		var err error
 		// Read JSON message from client
-		err := conn.ReadJSON(&msg)
-		if err != nil {
-			log.Println("Read error:", err)
+		formatErr := conn.ReadJSON(&msg)
+		if formatErr != nil {
+            appErrors.HandleError(conn, appErrors.NewLoggableError("Read Error: " + err.Error(), appErrors.WARN))
 			break
 		}
 
 		switch msg.Type {
 		case "login":
-			userUUID = *handleLogin(conn, msg)
+			userUUID, err = handleLogin(conn, msg)
+			handleMessageError(conn, err)
 		case "room_create":
-			handleRoomCreate(conn, msg)
+			err = handleRoomCreate(conn, msg)
+			handleMessageError(conn, err)
 		case "room_join":
-			hanldeRoomJoin(conn, msg)
+			err = handleRoomJoin(conn, msg)
+			handleMessageError(conn, err)
 		default:
-			utils.SendError(conn, "Unknown message type")
+			handleMessageError(conn, appErrors.NewClientError("Unknown message type"))
 		}
 	}
 }

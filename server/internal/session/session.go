@@ -1,6 +1,7 @@
 package session
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"sync"
@@ -52,6 +53,10 @@ func CreateSession(conn *websocket.Conn, username string) Session {
 func RemoveSession(uuid string) error {
 	sessions.Lock()
 	defer sessions.Unlock()
+
+    if uuid == "" {
+        return errors.New("Trying to remove a empty UUID session")
+    }
 
 	session, exists := sessions.data[uuid]
 	if !exists {
