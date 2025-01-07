@@ -1,24 +1,30 @@
 <template>
-  <link href='https://fonts.googleapis.com/css?family=VT323' rel='stylesheet' type='text/css'>
-  <div class="container">
-    <LoginScreen v-if="!sessionStore.isLoggedIn"/>
-  </div>
+    <div class="login-container">
+      <LoginScreen v-if="!sessionStore.isLoggedIn" />
+    </div>
+
 </template>
 
 <script setup>
 import LoginScreen from './views/LoginScreen.vue';
 import { useSessionsStore } from './stores/SessionStores';
+import { useWebSocketStore } from './stores/WebsocketStore';
 
-const sessionStore = useSessionsStore();
+const sessionStore = new useSessionsStore();
+const websocketStore = new useWebSocketStore();
+
+websocketStore.connect();
 </script>
 
 <style scoped>
-.container{
+.login-container {
   margin: 0 auto;
-  height: 600px;
-  width: 800px;
-  border: 2px solid black;
+  height: 500px;
+  width: 700px;
+  border: 2px solid rgb(99, 99, 175);
+  border-radius: 20px;
   font-family: 'VT323';
   font-size: 25px;
+  background-color: white;
 }
 </style>

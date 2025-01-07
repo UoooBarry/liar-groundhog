@@ -1,5 +1,6 @@
 <template>
   <div class="login-container">
+    
     <div class="input-group">
       <PixelatedInput placeholder="username" v-model="username"></PixelatedInput>
       <PixelatedButton class="login-btn" @click="login()">Login</PixelatedButton>

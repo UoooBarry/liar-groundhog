@@ -28,6 +28,9 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background-image: url('https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExb2t4aWJ4bXoyYTRjbXliY28xN3J4czRweGZ6cnFhdXIzZzJqMjJjMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/RIpj8HJGVGGTUdM76b/giphy.gif');
+  background-size: cover;
+  background-position: center;
 }
 
 h1 {

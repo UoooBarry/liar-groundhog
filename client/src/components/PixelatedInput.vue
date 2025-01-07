@@ -5,7 +5,6 @@
 </template>
 
 <script setup>
-	import { defineModel } from 'vue'
 	const text = defineModel({
 		type: String,
 		required: false,
