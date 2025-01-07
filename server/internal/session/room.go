@@ -1,7 +1,6 @@
 package session
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"sync"
@@ -9,6 +8,7 @@ import (
 	"uooobarry/liar-groundhog/internal/liar"
 	"uooobarry/liar-groundhog/internal/types"
 	"uooobarry/liar-groundhog/internal/utils"
+    "uooobarry/liar-groundhog/internal/errors"
 
 	"github.com/google/uuid"
 )
@@ -78,15 +78,15 @@ func validPlayerJoin(room *Room, playerUUID string) (*Session, error) {
 	player, exist := FindSession(playerUUID)
 
 	if !exist {
-		return nil, fmt.Errorf("Player session not exist '%s'", playerUUID)
+		return nil, errors.NewLoggableError(fmt.Sprintf("Player session not exist '%s'", playerUUID), errors.ERROR)
 	}
 
 	if len(room.Players) >= MAX_PLAYERS {
-		return player, errors.New("The current game room is full.")
+		return player, errors.NewClientError("The current game room is full.")
 	}
 
 	if _, inRoom := room.FindPlayerInRoom(player.Username); inRoom {
-		return player, fmt.Errorf("Player '%s' is already in the room", player.Username)
+        return player, errors.NewClientError(fmt.Sprintf("A player name '%s' is already in this room", player.Username))
 	}
 
 	return player, nil

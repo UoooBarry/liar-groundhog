@@ -1,13 +1,13 @@
 package session
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"sync"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+    "uooobarry/liar-groundhog/internal/errors"
 )
 
 // Session represents a user's session
@@ -55,12 +55,12 @@ func RemoveSession(uuid string) error {
 	defer sessions.Unlock()
 
     if uuid == "" {
-        return errors.New("Trying to remove a empty UUID session")
+        return errors.NewLoggableError("Trying to remove a empty UUID session", errors.WARN)
     }
 
 	session, exists := sessions.data[uuid]
 	if !exists {
-		return fmt.Errorf("session '%s' does not exist", uuid)
+		return errors.NewLoggableError(fmt.Sprintf("session '%s' does not exist", uuid), errors.ERROR)
 	}
 
 	delete(sessions.data, uuid)

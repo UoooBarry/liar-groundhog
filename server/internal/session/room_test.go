@@ -32,7 +32,7 @@ func TestRoom_AddPlayer(t *testing.T) {
 	t.Run("Player already in the room", func(t *testing.T) {
 		err := room.AddPlayer(playerUUID) // Add the player again
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "Player 'testplayer' is already in the room")
+		assert.Contains(t, err.Error(), "A player name 'testplayer' is already in this room")
 	})
 
 	t.Run("Room is full", func(t *testing.T) {

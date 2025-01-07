@@ -60,7 +60,7 @@ func handleLogin(conn *websocket.Conn, msg types.Message) (string, error) {
 func handleRoomCreate(conn *websocket.Conn, msg types.Message) error {
 	room, err := session.CreateRoom(msg.SessionUUID)
 	if err != nil {
-		return appErrors.NewClientError(err.Error())
+		return err
 	}
 	response := types.Message{
 		Type:     "room_create",
@@ -77,7 +77,7 @@ func handleRoomJoin(conn *websocket.Conn, msg types.Message) error {
 		return appErrors.NewClientError(fmt.Sprintf("Room ID '%s' does not exist", msg.RoomUUID))
 	}
 	if err := room.AddPlayer(msg.SessionUUID); err != nil {
-		return appErrors.NewLoggableError(err.Error(), appErrors.WARN)
+		return err
 	}
 
 	response := types.Message{
@@ -110,7 +110,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		error := session.RemoveSession(userUUID)
 		if error != nil {
-            handleMessageError(conn, appErrors.NewLoggableError(error.Error(), appErrors.ERROR))
+			handleMessageError(conn, error)
 		}
 	}()
 
@@ -121,7 +121,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		// Read JSON message from client
 		formatErr := conn.ReadJSON(&msg)
 		if formatErr != nil {
-            appErrors.HandleError(conn, appErrors.NewLoggableError("Read Error: " + err.Error(), appErrors.WARN))
+			appErrors.HandleError(conn, appErrors.NewLoggableError("Read Error: "+formatErr.Error(), appErrors.WARN))
 			break
 		}
 
