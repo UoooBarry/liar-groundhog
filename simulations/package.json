@@ -1,0 +1,15 @@
+{
+  "name": "scripts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start_game_test": "node --experimental-websocket start_game_test.js"
+  },
+  "engines" :{
+    "npm": ">=21.0.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
