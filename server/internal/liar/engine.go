@@ -9,40 +9,33 @@ import (
 	"uooobarry/liar-groundhog/internal/types"
 )
 
-type Card string
-
-const (
-	Jack        Card = "jack"
-	Queen       Card = "queen"
-	King        Card = "king"
-	Ace         Card = "Ace"
-	BigJoker    Card = "big_joker"
-	LittleJoker Card = "little_joker"
-)
-
 const TotalCardCount = 26
 
-var CardPartition = map[Card]int{
-	Jack:        6,
-	Queen:       6,
-	King:        6,
-	Ace:         6,
-	BigJoker:    1,
-	LittleJoker: 1,
+var CardPartition = map[types.Card]int{
+	types.Jack:        6,
+	types.Queen:       6,
+	types.King:        6,
+	types.Ace:         6,
+	types.BigJoker:    1,
+	types.LittleJoker: 1,
 }
 
 type Engine struct {
 	State types.GameState
-	Cards []Card
+	Cards []types.Card
 }
 
 func New() Engine {
-	cards := make([]Card, 0, TotalCardCount)
+	return Engine{State: types.StatePreparing, Cards: newPackOfCards()}
+}
+
+func newPackOfCards() []types.Card {
+	cards := make([]types.Card, 0, TotalCardCount)
 	for card, count := range CardPartition {
-		cards = append(cards, slices.Repeat([]Card{card}, count)...)
+		cards = append(cards, slices.Repeat([]types.Card{card}, count)...)
 	}
 
-	return Engine{State: types.StatePreparing, Cards: cards}
+	return cards
 }
 
 func (e *Engine) Shuffle() {
@@ -55,6 +48,16 @@ func (e *Engine) Shuffle() {
 		// Swap the elements at i and j
 		e.Cards[i], e.Cards[j] = e.Cards[j], e.Cards[i]
 	}
+}
+
+func (e *Engine) DealCards(num int) []types.Card {
+	if len(e.Cards) < num {
+		return e.Cards
+	}
+
+    dealedCards := e.Cards[:num]
+	e.Cards = e.Cards[num:]
+	return dealedCards
 }
 
 func (e *Engine) StartGame() error {
@@ -83,6 +86,7 @@ func (e *Engine) ResetGame() error {
 		return errors.New("cannot reset game: game is not in the settlement state")
 	}
 	e.State = types.StatePreparing
+	e.Cards = newPackOfCards()
 	fmt.Println("Game has been reset to preparing state")
 	return nil
 }

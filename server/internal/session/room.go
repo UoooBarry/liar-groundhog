@@ -14,7 +14,7 @@ import (
 )
 
 const MAX_PLAYERS = 4
-const MIN_PLAYERS_TO_START =4
+const MIN_PLAYERS_TO_START = 4
 
 var rooms = struct {
 	sync.Mutex
@@ -24,10 +24,11 @@ var rooms = struct {
 }
 
 type Room struct {
-	RoomUUID string
-	Players  []Session
-	Engine   types.GameEngine
-    OwnerUUID string
+	RoomUUID    string
+	Players     []*Session
+	Engine      liar.Engine
+	OwnerUUID   string
+	playerCards map[*Session][]types.Card
 }
 
 func CreateRoom(ownerUUID string, gameEngine *liar.Engine) (*Room, error) {
@@ -40,32 +41,33 @@ func CreateRoom(ownerUUID string, gameEngine *liar.Engine) (*Room, error) {
 		return nil, fmt.Errorf("Player session not exist '%s'", ownerUUID)
 	}
 	uuid := uuid.NewString()
-	room := &Room{RoomUUID: uuid, Engine: gameEngine}
+	room := &Room{RoomUUID: uuid, Engine: *gameEngine}
 	rooms.data[uuid] = room
-	room.Players = append(room.Players, *owner)
-    room.OwnerUUID = *&owner.SessionUUID
+	room.Players = append(room.Players, owner)
+	room.playerCards = make(map[*Session][]types.Card)
+	room.OwnerUUID = *&owner.SessionUUID
 
 	log.Printf("Created room UUID '%s'", uuid)
 	return room, nil
 }
 
 func FindRoom(uuid *string) (*Room, bool) {
-    if (uuid == nil) {
-        return nil, false
-    }
+	if uuid == nil {
+		return nil, false
+	}
 	room, exist := rooms.data[*uuid]
 
 	return room, exist
 }
 
 func (room *Room) FindPlayerInRoom(username *string) (*Session, bool) {
-    if (username == nil) {
-        return nil, false
-    }
+	if username == nil {
+		return nil, false
+	}
 
 	for _, player := range room.Players {
 		if player.Username == *username {
-			return &player, true
+			return player, true
 		}
 	}
 
@@ -73,13 +75,13 @@ func (room *Room) FindPlayerInRoom(username *string) (*Session, bool) {
 }
 
 func (room *Room) FindPlayerInRoomByUUID(uuid *string) (*Session, bool) {
-    if (uuid == nil) {
-        return nil, false
-    }
+	if uuid == nil {
+		return nil, false
+	}
 
 	for _, player := range room.Players {
 		if player.SessionUUID == *uuid {
-			return &player, true
+			return player, true
 		}
 	}
 
@@ -88,13 +90,54 @@ func (room *Room) FindPlayerInRoomByUUID(uuid *string) (*Session, bool) {
 
 func (room *Room) SendPublicPlayerAction(player Session, msg types.ActionMessage) {}
 
-func (room *Room) PublishRoomInfo() {
-	for _, player := range room.Players {
+func SendPublicMessageToPlayers(room *Room, m any) {
+    for _, player := range room.Players {
 		conn := player.Conn
 		if conn == nil {
 			continue
 		}
-		utils.SendResponse(conn, room.GetInfoMessage())
+		utils.SendResponse(conn, m)
+	}
+}
+
+func SendPrivateMessageToPlayer(room *Room, fn func(*Room, *Session) types.MessageInterface) {
+    for _, player := range room.Players {
+		conn := player.Conn
+		if conn == nil {
+			continue
+		}
+		utils.SendResponse(conn, fn(room, player))
+	}
+}
+
+func (room *Room) PublishRoomInfo() {
+    SendPublicMessageToPlayers(room, GetInfoMessage(room))
+}
+
+func (room *Room) PublishPlayerHoldingCards() {
+    SendPrivateMessageToPlayer(room, GetUserCardMessages)
+}
+
+func GetUserCardMessages(room *Room, p *Session) types.MessageInterface {
+	return types.PlayerHoldingCardsMessage{
+		Type:         "player_holding_cards",
+		HoldingCards: room.playerCards[p],
+		SessionUUID:  p.SessionUUID,
+		Username:     p.Username,
+	}
+}
+
+func GetInfoMessage(room *Room) types.RoomInfoMessage {
+	playerListInfo := utils.MapSlice(room.Players, func(p *Session) types.PublicPlayerMessage {
+		return types.PublicPlayerMessage{
+			Username: p.Username,
+		}
+	})
+	return types.RoomInfoMessage{
+		Type:        "room_info",
+		PlayerCount: room.PlayerCount(),
+		PlayerList:  playerListInfo,
+		GameState:   room.Engine.GetState(),
 	}
 }
 
@@ -110,7 +153,7 @@ func validPlayerJoin(room *Room, playerUUID string) (*Session, error) {
 	}
 
 	if _, inRoom := room.FindPlayerInRoom(&player.Username); inRoom {
-        return player, errors.NewClientError(fmt.Sprintf("A player name '%s' is already in this room", player.Username))
+		return player, errors.NewClientError(fmt.Sprintf("A player name '%s' is already in this room", player.Username))
 	}
 
 	return player, nil
@@ -122,7 +165,7 @@ func (room *Room) AddPlayer(playerUUID string) error {
 	if error != nil {
 		return error
 	}
-	room.Players = append(room.Players, *player)
+	room.Players = append(room.Players, player)
 	player.RoomUUID = room.RoomUUID
 	room.PublishRoomInfo()
 	return nil
@@ -132,33 +175,29 @@ func (room *Room) PlayerCount() int {
 	return len(room.Players)
 }
 
-func (room *Room) GetInfoMessage() types.RoomInfoMessage {
-	playerListInfo := utils.MapSlice(room.Players, func(p Session) types.PublicPlayerMessage {
-		return types.PublicPlayerMessage{
-			Username: p.Username,
-		}
-	})
-	return types.RoomInfoMessage{
-		Type:        "room_info",
-		PlayerCount: room.PlayerCount(),
-		PlayerList:  playerListInfo,
-        GameState: room.Engine.GetState(),
-	}
-}
+
 
 func (room *Room) TryStartGame(playerUUID *string) error {
-    player, exist := room.FindPlayerInRoomByUUID(playerUUID)
-    if !exist || room.OwnerUUID != player.SessionUUID {
-        return errors.NewClientError("Invalid player")
-    }
-    if err := room.Engine.StartGame(); err != nil {
-        return err
-    }
-    if room.PlayerCount() < MIN_PLAYERS_TO_START {
-        return errors.NewClientError("Require at least 4 players to start the game.")
-    }
+	player, exist := room.FindPlayerInRoomByUUID(playerUUID)
+	if !exist || room.OwnerUUID != player.SessionUUID {
+		return errors.NewClientError("Invalid player")
+	}
+	if err := room.Engine.StartGame(); err != nil {
+		return err
+	}
+	if room.PlayerCount() < MIN_PLAYERS_TO_START {
+		return errors.NewClientError("Require at least 4 players to start the game.")
+	}
 
-    room.PublishRoomInfo()
+	room.PublishRoomInfo()
+	room.dealCards()
 
-    return nil
+	return nil
+}
+
+func (room *Room) dealCards() {
+	for _, player := range room.Players {
+		room.playerCards[player] = room.Engine.DealCards(4)
+	}
+    room.PublishPlayerHoldingCards()
 }

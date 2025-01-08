@@ -21,6 +21,15 @@ type ActionMessage struct {
 type RoomInfoMessage struct {
 	Type        string                `json:"type"` // Type of the message (e.g., "login")
 	PlayerCount int                   `json:"player_count"`
-    PlayerList  []PublicPlayerMessage `json:"player_list"`
-    GameState GameState `json:"game_state"`
+	PlayerList  []PublicPlayerMessage `json:"player_list"`
+	GameState   GameState             `json:"game_state"`
 }
+
+type PlayerHoldingCardsMessage struct {
+	Type         string `json:"type"` // Type of the message (e.g., "player_holding_cards")
+	HoldingCards []Card `json:"holding_cards"`
+	SessionUUID  string `json:"sessionuuid,omitempty"` // UUID generated for the user
+	Username     string `json:"username,omitempty"`    // Username for login
+}
+
+type MessageInterface interface {}

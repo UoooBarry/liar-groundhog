@@ -1,3 +1,8 @@
+/**
+ * Generate login message
+ * @param {string} username - Description of the parameter
+ * @returns {Object} - Description of the return value
+ */
 function loginMessage(username) {
     return {
         type: "login",
@@ -66,9 +71,13 @@ function start() {
 
         // a user login success
         if (response.type === "login") {
-            user = people.find((p) => p.username == response.username);
-            user.sessionuuid = response.sessionuuid;
-            console.log('login success:', user);
+            let user = people.find((p) => p.username == response.username);
+            if (user) {
+                user.sessionuuid = response.sessionuuid;
+                console.log('login success:', user);
+            } else {
+                console.error("unfond local user")
+            }
         }
         // room_create success
         if (response.type === 'room_create') {

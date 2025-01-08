@@ -15,3 +15,14 @@ type GameEngine interface {
     EndGame() error
     GetState() GameState
 }
+
+type Card string
+
+const (
+	Jack        Card = "jack"
+	Queen       Card = "queen"
+	King        Card = "king"
+	Ace         Card = "Ace"
+	BigJoker    Card = "big_joker"
+	LittleJoker Card = "little_joker"
+)

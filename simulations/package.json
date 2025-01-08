@@ -6,7 +6,7 @@
   "scripts": {
     "start_game_test": "node --experimental-websocket start_game_test.js"
   },
-  "engines" :{
+  "engines": {
     "npm": ">=21.0.0"
   },
   "keywords": [],
