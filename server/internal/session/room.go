@@ -190,14 +190,22 @@ func (room *Room) TryStartGame(playerUUID *string) error {
 	}
 
 	room.PublishRoomInfo()
-	room.dealCards()
+    err := room.dealCards()
+    if err != nil {
+        return err
+    }
 
 	return nil
 }
 
-func (room *Room) dealCards() {
+func (room *Room) dealCards() error {
 	for _, player := range room.Players {
-		room.playerCards[player] = room.Engine.DealCards(4)
+        cards, err := room.Engine.DealCards(5)
+        if err != nil {
+            return err
+        }
+		room.playerCards[player] = cards
 	}
     room.PublishPlayerHoldingCards()
+    return nil
 }

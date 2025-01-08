@@ -50,14 +50,14 @@ func (e *Engine) Shuffle() {
 	}
 }
 
-func (e *Engine) DealCards(num int) []types.Card {
+func (e *Engine) DealCards(num int) ([]types.Card, error) {
 	if len(e.Cards) < num {
-		return e.Cards
+		return e.Cards, errors.New("not enough cards to deal")
 	}
 
     dealedCards := e.Cards[:num]
 	e.Cards = e.Cards[num:]
-	return dealedCards
+	return dealedCards, nil
 }
 
 func (e *Engine) StartGame() error {
