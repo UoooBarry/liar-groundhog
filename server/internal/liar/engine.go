@@ -131,19 +131,19 @@ func (e *Engine) PlaceCard(holdingCards []types.Card, placedCards []types.Card) 
 
 		// put cards back to the public
 		e.Cards = append(e.Cards, holdingCards[i])
-        holdingCards = append(holdingCards[:i], holdingCards[i+1:]...)
+		holdingCards = append(holdingCards[:i], holdingCards[i+1:]...)
 	}
 
 	e.LastPlaceCards = placedCards
-    e.nextAction()
+	e.nextAction()
 	return holdingCards, nil
 }
 
 func (e *Engine) Declare(doubt bool) types.DeclareResult {
-    var result types.DeclareResult
-    if (!doubt) {
-        result = types.Skip
-    }
+	var result types.DeclareResult
+	if !doubt {
+		result = types.Skip
+	}
 
 	// Every cards it claims are the goal card
 	if utils.SliceIsAll(e.LastPlaceCards, func(c types.Card) bool {
@@ -154,6 +154,6 @@ func (e *Engine) Declare(doubt bool) types.DeclareResult {
 		result = types.Lied
 	}
 
-    e.nextAction()
-    return result
+	e.nextAction()
+	return result
 }

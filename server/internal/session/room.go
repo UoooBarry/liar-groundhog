@@ -274,9 +274,9 @@ func (room *Room) PlayerDeclare(playerUUID string, doubt bool) error {
 		return err
 	}
 
-    // If the current player choice to doubt
+	// If the current player choice to doubt
 	if doubt {
-        lastPlayer := room.Players[room.GetLastPlayerIndex()]
+		lastPlayer := room.Players[room.GetLastPlayerIndex()]
 		result := room.engine.Declare(doubt)
 		msg := types.RoomBoardCastDeclareMessage{
 			Refname: p.Username,
