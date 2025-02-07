@@ -275,27 +275,25 @@ func (room *Room) PlayerDeclare(playerUUID string, doubt bool) error {
 	}
 
 	// If the current player choice to doubt
-	if doubt {
-		lastPlayer := room.Players[room.GetLastPlayerIndex()]
-		result := room.engine.Declare(doubt)
-		msg := types.RoomBoardCastDeclareMessage{
-			Refname: p.Username,
-			Suspect: lastPlayer.Username,
-			Result:  result,
+	lastPlayer := room.Players[room.GetLastPlayerIndex()]
+	result := room.engine.Declare(doubt)
+	msg := types.RoomBoardCastDeclareMessage{
+		Refname: p.Username,
+		Suspect: lastPlayer.Username,
+		Result:  result,
+	}
+	SendPublicMessageToPlayers(room, msg)
+	if result == types.Lied {
+		err := room.killPlayer(room.Players[room.GetLastPlayerIndex()])
+		if err != nil {
+			return err
 		}
-		SendPublicMessageToPlayers(room, msg)
-		if result == types.Lied {
-			err := room.killPlayer(room.Players[room.GetLastPlayerIndex()])
-			if err != nil {
-				return err
-			}
-		} else {
-			err := room.killPlayer(p)
-			if err != nil {
-				return err
-			}
+	} else {
+		err := room.killPlayer(p)
+		if err != nil {
+			return err
+		}
 
-		}
 	}
 
 	room.PublishRoomInfo()
