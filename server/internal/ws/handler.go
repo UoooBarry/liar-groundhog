@@ -105,6 +105,9 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
         case "room_start":
             err = handleRoomStart(conn, msg)
             handleMessageError(conn, err)
+        case "game_place_card":
+            err = handleRoomPlaceCard(conn, msg)
+            handleMessageError(conn, err)
 		default:
 			handleMessageError(conn, appErrors.NewClientError("Unknown message type"))
 		}

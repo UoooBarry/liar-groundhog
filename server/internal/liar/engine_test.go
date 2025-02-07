@@ -72,6 +72,44 @@ func TestEngine_Cards(t *testing.T) {
 	})
 }
 
+func TestEngine_PlaceCards(t *testing.T) {
+
+    t.Run("Not able to place cards that not holding", func(t *testing.T) {
+        engine := liar.New()
+        _, err := engine.PlaceCard([]types.Card{types.Ace}, []types.Card{types.Ace, types.BigJoker})
+        assert.Error(t, err)
+		assert.Contains(t, err.Error(), "You do not have big_joker")
+    })
+
+    t.Run("Able to calculate the remain cards", func(t *testing.T) {
+        engine := liar.New()
+        remains, err := engine.PlaceCard([]types.Card{types.Ace, types.BigJoker}, []types.Card{types.Ace})
+        assert.NoError(t, err)
+        assert.Equal(t, []types.Card{types.BigJoker}, remains)
+    })
+}
+
+func TestEngine_Declare(t *testing.T) {
+    engine := liar.New()
+
+    t.Run("Joker can be count as the bet card", func(t *testing.T) {
+        _, err := engine.PlaceCard([]types.Card{types.Ace, types.BigJoker}, []types.Card{types.Ace, types.BigJoker})
+        assert.NoError(t, err)
+        // Declare result will be truthful
+        result := engine.Declare(true)
+        assert.Equal(t, types.Truthful, result)
+    })
+
+    t.Run("Correctly return lied result", func(t *testing.T) {
+        _, err := engine.PlaceCard([]types.Card{types.Ace, types.King}, []types.Card{types.King})
+        assert.NoError(t, err)
+        // Declare result will be truthful
+        log.Println("lied")
+        result := engine.Declare(true)
+        assert.Equal(t, types.Lied, result)
+    })
+}
+
 func TestEngine_DealCards(t *testing.T) {
 	// Initialize the engine
 	engine := liar.New()
@@ -110,4 +148,27 @@ func TestEngine_DealCards(t *testing.T) {
 		expectedRemainingDeckSize := initialDeckSize - cardsPerPlayer*numPlayers
 		assert.Equal(t, expectedRemainingDeckSize, remainingDeckSize, "Deck size after second deal is incorrect")
 	})
+}
+
+func TestEngine_GameAction(t *testing.T) {
+	engine := liar.New()
+
+    t.Run("Game round is correctly update", func(t *testing.T) {
+        // Round one
+        // Place one ace
+        assert.Equal(t, types.PlaceCards, engine.CurrentAction)
+        _, err := engine.PlaceCard([]types.Card{types.Ace}, []types.Card{types.Ace})
+        assert.NoError(t, err)
+
+        // Round two
+        // Declare
+        assert.Equal(t, types.Doubt, engine.CurrentAction)
+        engine.Declare(false)
+        // Round two
+        // Place cards
+        assert.Equal(t, types.PlaceCards, engine.CurrentAction)
+        _, errR2 := engine.PlaceCard([]types.Card{types.Ace, types.LittleJoker}, []types.Card{types.Ace})
+        assert.NoError(t, errR2)
+        assert.Equal(t, types.Doubt, engine.CurrentAction)
+    })
 }

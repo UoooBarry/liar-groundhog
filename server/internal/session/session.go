@@ -7,25 +7,26 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-    "uooobarry/liar-groundhog/internal/errors"
+	"uooobarry/liar-groundhog/internal/errors"
 )
 
-// Session represents a user's session
-type Session struct {
+// Player represents a user's session
+type Player struct {
 	SessionUUID string
 	Username    string
 	RoomUUID    string
 	Conn        *websocket.Conn
+	Alive       bool
 }
 
 var sessions = struct {
 	sync.Mutex
-	data map[string]*Session // uuid -> Session
+	data map[string]*Player // uuid -> Session
 }{
-	data: make(map[string]*Session),
+	data: make(map[string]*Player),
 }
 
-func FindSession(uuid string) (*Session, bool) {
+func FindSession(uuid string) (*Player, bool) {
 	session, exist := sessions.data[uuid]
 	if !exist {
 		return nil, false
@@ -34,15 +35,16 @@ func FindSession(uuid string) (*Session, bool) {
 }
 
 // CreateSession generates a new session for a username
-func CreateSession(conn *websocket.Conn, username string) Session {
+func CreateSession(conn *websocket.Conn, username string) Player {
 	sessions.Lock()
 	defer sessions.Unlock()
 
 	uuid := uuid.NewString()
-	session := Session{
+	session := Player{
 		Username:    username,
 		SessionUUID: uuid,
 		Conn:        conn,
+        Alive:       true,
 	}
 	sessions.data[uuid] = &session
 	log.Printf("Created session for user '%s' with UUID '%s'", username, uuid)
@@ -54,9 +56,9 @@ func RemoveSession(uuid string) error {
 	sessions.Lock()
 	defer sessions.Unlock()
 
-    if uuid == "" {
-        return errors.NewLoggableError("Trying to remove a empty UUID session", errors.WARN)
-    }
+	if uuid == "" {
+		return errors.NewLoggableError("Trying to remove a empty UUID session", errors.WARN)
+	}
 
 	session, exists := sessions.data[uuid]
 	if !exists {

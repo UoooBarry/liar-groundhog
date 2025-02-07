@@ -64,3 +64,24 @@ func handleRoomStart(conn *websocket.Conn, msg types.Message) error {
 
     return nil
 }
+
+func handleRoomPlaceCard (conn *websocket.Conn, msg types.Message) error {
+    room, exist := session.FindRoom(&msg.RoomUUID)
+	if !exist {
+		return appErrors.NewClientError(fmt.Sprintf("Room ID '%s' does not exist", msg.RoomUUID))
+	}
+
+    err := room.PlayerPlaceCard(msg.SessionUUID, msg.Cards)
+    if err != nil {
+        return err
+    }
+    response := types.Message{
+    	Type:     "player_place_cards",
+		RoomUUID: room.RoomUUID,
+		Content:  "Success",
+        SessionUUID: msg.SessionUUID,
+    }
+    utils.SendResponse(conn, response)
+
+    return nil
+}
