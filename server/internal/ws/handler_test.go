@@ -2,11 +2,12 @@ package ws_test
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"uooobarry/liar-groundhog/internal/types"
+	"uooobarry/liar-groundhog/internal/message"
 	"uooobarry/liar-groundhog/internal/ws"
 
 	"github.com/gorilla/websocket"
@@ -27,12 +28,12 @@ func TestHandleWebSocket(t *testing.T) {
 	assert.NoError(t, err, "Failed to connect to WebSocket server")
 	defer client.Close()
 
-    client2, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
-    assert.NoError(t, err, "Failed to connect to WebSocket server")
-    defer client2.Close()
+	client2, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	assert.NoError(t, err, "Failed to connect to WebSocket server")
+	defer client2.Close()
 
 	// Test Login Message
-	loginMessage := types.Message{
+	loginMessage := message.Message{
 		Type:     "login",
 		Username: "test_user",
 	}
@@ -40,44 +41,52 @@ func TestHandleWebSocket(t *testing.T) {
 	assert.NoError(t, err, "Failed to send login message")
 
 	// Read the response
-	var response types.Message
-	err = client.ReadJSON(&response)
+	var loginMsg message.LoginSuccessMessage
+	err = client.ReadJSON(&loginMsg)
 	assert.NoError(t, err, "Failed to read login response")
-	assert.Equal(t, "login", response.Type, "Unexpected message type")
-	assert.Equal(t, "test_user", response.Username, "Unexpected username")
-	assert.Equal(t, "Login successful", response.Content, "Unexpected content")
+	assert.Equal(t, "login", loginMsg.Type, "Unexpected message type")
+	assert.Equal(t, "test_user", loginMsg.Username, "Unexpected username")
+	assert.Equal(t, "Login successful", loginMsg.Content, "Unexpected content")
 
 	// Test Room Creation
-	roomCreateMessage := types.Message{
-		Type:        "room_create",
-		SessionUUID: response.SessionUUID, // Use the session from the login response
+	roomCreateMessage := message.RoomCreateMessage{
+		SessionUUID: loginMsg.SessionUUID, // Use the session from the login response
+		Message: message.Message{
+			Type: "room_create",
+		},
 	}
 	err = client.WriteJSON(roomCreateMessage)
 	assert.NoError(t, err, "Failed to send room creation message")
 
-	err = client.ReadJSON(&response)
+	var roomMsg message.RoomOpMessage
+	err = client.ReadJSON(&roomMsg)
 	assert.NoError(t, err, "Failed to read room creation response")
-	assert.Equal(t, "room_create", response.Type, "Unexpected message type")
-	assert.NotEmpty(t, response.RoomUUID, "RoomUUID should not be empty")
-	assert.Equal(t, "Room create successful", response.Content, "Unexpected content")
+	resNoError(t, roomMsg.Message)
+	log.Println("Room MSG:", roomMsg)
+	assert.NotEmpty(t, roomMsg.RoomUUID, "RoomUUID should not be empty")
 
 	// Test Room Join
 	// Test Login Message
-	loginTwo := types.Message{
-		Type:     "login",
+	loginTwo := message.LoginMessage{
+		Message: message.Message{
+			Type: "login",
+		},
 		Username: "test_user_2",
 	}
 	err = client.WriteJSON(loginTwo)
 	assert.NoError(t, err)
-	var loginTwoResponse types.Message
-    var roomJoinResponse types.Message
+	var loginTwoResponse message.LoginSuccessMessage
+	var roomJoinResponse message.RoomOpMessage
 	err = client.ReadJSON(&loginTwoResponse)
+	resNoError(t, loginTwoResponse.Message)
 	assert.NoError(t, err)
 
-	roomJoinMessage := types.Message{
-		Type:        "room_join",
+	roomJoinMessage := message.RoomOpMessage{
+		Message: message.Message{
+			Type: "room_join",
+		},
 		SessionUUID: loginTwoResponse.SessionUUID,
-		RoomUUID:    response.RoomUUID, // Use the created room UUID
+		RoomUUID:    roomMsg.RoomUUID, // Use the created room UUID
 	}
 	err = client2.WriteJSON(roomJoinMessage)
 	assert.NoError(t, err)
@@ -85,6 +94,11 @@ func TestHandleWebSocket(t *testing.T) {
 	err = client2.ReadJSON(&roomJoinResponse)
 	assert.NoError(t, err)
 	fmt.Printf("rs %v", roomJoinResponse)
+	resNoError(t, roomJoinMessage.Message)
 	assert.Equal(t, "room_join", roomJoinResponse.Type)
 	assert.Equal(t, "Room join successful", roomJoinResponse.Content)
+}
+
+func resNoError(t *testing.T, res message.Message) {
+	assert.NotEqual(t, "error", res.Type)
 }

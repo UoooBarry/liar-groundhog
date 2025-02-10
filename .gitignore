@@ -1,3 +1,6 @@
 /server/tmp/**
 
 /client/.pnpm-store
+
+/**/node_modules
+/**/.pnpm-store

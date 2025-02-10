@@ -1,15 +1,14 @@
 package ws
 
 import (
-	"fmt"
+	"encoding/json"
 	"log"
 	"net/http"
 	"sync"
 
 	appErrors "uooobarry/liar-groundhog/internal/errors"
+	"uooobarry/liar-groundhog/internal/message"
 	"uooobarry/liar-groundhog/internal/session"
-	"uooobarry/liar-groundhog/internal/types"
-	"uooobarry/liar-groundhog/internal/utils"
 
 	"github.com/gorilla/websocket"
 )
@@ -29,7 +28,7 @@ var rooms = struct {
 	data: make(map[string][]string),
 }
 
-func validateUsername(msg types.Message) error {
+func validateUsername(msg message.LoginMessage) error {
 	if msg.Username == "" {
 		return appErrors.NewClientError("Username is required for login")
 	}
@@ -38,7 +37,7 @@ func validateUsername(msg types.Message) error {
 }
 
 // handleLogin handles the login request
-func handleLogin(conn *websocket.Conn, msg types.Message) (string, error) {
+func handleLogin(conn *websocket.Conn, msg message.LoginMessage) (string, error) {
 	if err := validateUsername(msg); err != nil {
 		return "", err
 	}
@@ -46,53 +45,23 @@ func handleLogin(conn *websocket.Conn, msg types.Message) (string, error) {
 	user := session.CreateSession(conn, msg.Username)
 
 	// Send response to the client
-	response := types.Message{
-		Type:        "login",
+	response := message.LoginSuccessMessage{
+		Message: message.Message{
+			Content: "Login successful",
+			Type:    "login",
+		},
 		Username:    msg.Username,
 		SessionUUID: user.SessionUUID,
-		Content:     "Login successful",
 	}
-	utils.SendResponse(conn, response)
+	message.SendResponse(conn, response)
 
 	return user.SessionUUID, nil
-}
-
-func handleRoomCreate(conn *websocket.Conn, msg types.Message) error {
-	room, err := session.CreateRoom(msg.SessionUUID)
-	if err != nil {
-		return err
-	}
-	response := types.Message{
-		Type:     "room_create",
-		RoomUUID: room.RoomUUID,
-		Content:  "Room create successful",
-	}
-	utils.SendResponse(conn, response)
-	return nil
-}
-
-func handleRoomJoin(conn *websocket.Conn, msg types.Message) error {
-	room, exist := session.FindRoom(msg.RoomUUID)
-	if !exist {
-		return appErrors.NewClientError(fmt.Sprintf("Room ID '%s' does not exist", msg.RoomUUID))
-	}
-	if err := room.AddPlayer(msg.SessionUUID); err != nil {
-		return err
-	}
-
-	response := types.Message{
-		Type:     "room_join",
-		RoomUUID: room.RoomUUID,
-		Content:  "Room join successful",
-	}
-	utils.SendResponse(conn, response)
-	return nil
 }
 
 // Helper function to handle errors in a consistent manner
 func handleMessageError(conn *websocket.Conn, err error) {
 	if err != nil {
-		appErrors.HandleError(conn, err)
+		HandleError(conn, err)
 	}
 }
 
@@ -116,27 +85,45 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	// Loop to read and write messages
 	for {
-		var msg types.Message
-		var err error
-		// Read JSON message from client
-		formatErr := conn.ReadJSON(&msg)
-		if formatErr != nil {
-			appErrors.HandleError(conn, appErrors.NewLoggableError("Read Error: "+formatErr.Error(), appErrors.WARN))
-			break
+		_, rawMsg, err := conn.ReadMessage()
+		if err != nil {
+			log.Println("ReadMessage Error:", err)
+			return
 		}
+		var msg message.Message
+		if err := json.Unmarshal(rawMsg, &msg); err != nil {
+			log.Println("JSON Unmarshal Error:", err)
+			return
+		}
+		if parser, exisit := messageParsers[msg.Type]; exisit {
+			parsedMsg, err := parser(rawMsg)
+			if err != nil {
+				log.Println("Parse user message error:", err)
+				return
+			}
 
-		switch msg.Type {
-		case "login":
-			userUUID, err = handleLogin(conn, msg)
-			handleMessageError(conn, err)
-		case "room_create":
-			err = handleRoomCreate(conn, msg)
-			handleMessageError(conn, err)
-		case "room_join":
-			err = handleRoomJoin(conn, msg)
-			handleMessageError(conn, err)
-		default:
-			handleMessageError(conn, appErrors.NewClientError("Unknown message type"))
-		}
+			switch v := parsedMsg.(type) {
+			case message.LoginMessage:
+				userUUID, err = handleLogin(conn, v)
+				handleMessageError(conn, err)
+			case message.RoomCreateMessage:
+				err = handleRoomCreate(conn, v)
+				handleMessageError(conn, err)
+			case message.RoomOpMessage:
+				if msg.Type == "room_join" {
+					err = handleRoomJoin(conn, v)
+				} else {
+					err = handleRoomStart(conn, v)
+				}
+				handleMessageError(conn, err)
+			case message.PlayerActionMessage:
+                err = handlePlayerAction(conn, v, rawMsg)
+				handleMessageError(conn, err)
+			default:
+				handleMessageError(conn, appErrors.NewClientError("Unknown message type"))
+			}
+		} else {
+            handleMessageError(conn, appErrors.NewLoggableError("Unknown param type", appErrors.ERROR))
+        }
 	}
 }

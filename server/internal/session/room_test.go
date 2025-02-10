@@ -4,8 +4,10 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"uooobarry/liar-groundhog/internal/liar"
 	"uooobarry/liar-groundhog/internal/session"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRoom_AddPlayer(t *testing.T) {
@@ -13,8 +15,9 @@ func TestRoom_AddPlayer(t *testing.T) {
 	playerUsername := "testplayer"
 	player := session.CreateSession(nil, playerUsername)
 	playerUUID := player.SessionUUID
+	gameEngine := liar.New()
 
-	room, err := session.CreateRoom(playerUUID)
+	room, err := session.CreateRoom(playerUUID, &gameEngine)
 
 	t.Run("Added owner successfully", func(t *testing.T) {
 		assert.NoError(t, err)
