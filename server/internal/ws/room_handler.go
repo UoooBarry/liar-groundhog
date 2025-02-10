@@ -79,9 +79,9 @@ func handlePlayerAction(conn *websocket.Conn, msg message.PlayerActionMessage, r
 	parser, exist := actionParsers[msg.ActionType]
 	if exist {
 		parsed, err := parser(raw)
-        if err != nil {
-            return appErrors.NewLoggableError(err.Error(), appErrors.ERROR)
-        }
+		if err != nil {
+			return appErrors.NewLoggableError(err.Error(), appErrors.ERROR)
+		}
 
 		switch v := parsed.(type) {
 		case message.PlayerPlaceCardsMessage:

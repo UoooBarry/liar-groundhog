@@ -110,10 +110,10 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 				err = handleRoomCreate(conn, v)
 				handleMessageError(conn, err)
 			case message.RoomOpMessage:
-				if msg.Type == "room_create" {
+				if msg.Type == "room_join" {
 					err = handleRoomJoin(conn, v)
 				} else {
-					err = handleRoomJoin(conn, v)
+					err = handleRoomStart(conn, v)
 				}
 				handleMessageError(conn, err)
 			case message.PlayerActionMessage:

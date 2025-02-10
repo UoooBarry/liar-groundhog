@@ -26,6 +26,7 @@ func HandleError(conn *websocket.Conn, err error) {
 			log.Println("ERROR:", e.Message)
 		}
 	default:
+		log.Println("Unexpected error:", e.Error())
 		message.SendError(conn, e.Error())
 	}
 }
