@@ -1,13 +1,12 @@
-package utils
+package message
 
 import (
-	"github.com/gorilla/websocket"
 	"log"
-	"uooobarry/liar-groundhog/internal/types"
+	"github.com/gorilla/websocket"
 )
 
 func SendError(conn *websocket.Conn, errMsg string) {
-	response := types.Message{
+	response := Message{
 		Type:    "error",
 		Content: errMsg,
 	}

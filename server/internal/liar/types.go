@@ -1,4 +1,4 @@
-package types
+package liar
 
 // GameState represents the state of the game.
 type GameState string

@@ -1,13 +1,13 @@
 package session
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"sync"
 
-	"uooobarry/liar-groundhog/internal/errors"
 	"uooobarry/liar-groundhog/internal/liar"
-	"uooobarry/liar-groundhog/internal/types"
+	"uooobarry/liar-groundhog/internal/message"
 	"uooobarry/liar-groundhog/internal/utils"
 
 	"github.com/google/uuid"
@@ -15,7 +15,7 @@ import (
 
 const MAX_PLAYERS = 4
 const MIN_PLAYERS_TO_START = 4
-const BET_CARD = types.Ace
+const BET_CARD = liar.Ace
 
 var rooms = struct {
 	sync.Mutex
@@ -29,10 +29,10 @@ type Room struct {
 	Players            []*Player
 	engine             liar.Engine
 	OwnerUUID          string
-	playerCards        map[*Player][]types.Card
+	playerCards        map[*Player][]liar.Card
 	CurrentPlayerIndex int
-	BetCard            types.Card
-	LastPlaceCards     []types.Card
+	BetCard            liar.Card
+	LastPlaceCards     []liar.Card
 }
 
 func CreateRoom(ownerUUID string, gameEngine *liar.Engine) (*Room, error) {
@@ -53,7 +53,7 @@ func CreateRoom(ownerUUID string, gameEngine *liar.Engine) (*Room, error) {
 	}
 	rooms.data[uuid] = room
 	room.Players = append(room.Players, owner)
-	room.playerCards = make(map[*Player][]types.Card)
+	room.playerCards = make(map[*Player][]liar.Card)
 
 	log.Printf("Created room UUID '%s'", uuid)
 	return room, nil
@@ -102,25 +102,23 @@ func (room *Room) FindPlayerInRoomByUUID(uuid *string) (*Player, bool) {
 	return nil, false
 }
 
-func (room *Room) SendPublicPlayerAction(player Player, msg types.ActionMessage) {}
-
 func SendPublicMessageToPlayers(room *Room, m any) {
 	for _, player := range room.Players {
 		conn := player.Conn
 		if conn == nil {
 			continue
 		}
-		utils.SendResponse(conn, m)
+		message.SendResponse(conn, m)
 	}
 }
 
-func SendPrivateMessageToPlayer(room *Room, fn func(*Room, *Player) types.MessageInterface) {
+func SendPrivateMessageToPlayer(room *Room, fn func(*Room, *Player) message.MessageInterface) {
 	for _, player := range room.Players {
 		conn := player.Conn
 		if conn == nil {
 			continue
 		}
-		utils.SendResponse(conn, fn(room, player))
+		message.SendResponse(conn, fn(room, player))
 	}
 }
 
@@ -132,8 +130,8 @@ func (room *Room) PublishPlayerHoldingCards() {
 	SendPrivateMessageToPlayer(room, GetUserCardMessages)
 }
 
-func GetUserCardMessages(room *Room, p *Player) types.MessageInterface {
-	return types.PlayerHoldingCardsMessage{
+func GetUserCardMessages(room *Room, p *Player) message.MessageInterface {
+	return message.PlayerHoldingCardsMessage{
 		Type:         "player_holding_cards",
 		HoldingCards: room.playerCards[p],
 		SessionUUID:  p.SessionUUID,
@@ -141,13 +139,13 @@ func GetUserCardMessages(room *Room, p *Player) types.MessageInterface {
 	}
 }
 
-func GetInfoMessage(room *Room) types.RoomInfoMessage {
-	playerListInfo := utils.MapSlice(room.Players, func(p *Player) types.PublicPlayerMessage {
-		return types.PublicPlayerMessage{
+func GetInfoMessage(room *Room) message.RoomInfoMessage {
+	playerListInfo := utils.MapSlice(room.Players, func(p *Player) message.PublicPlayerMessage {
+		return message.PublicPlayerMessage{
 			Username: p.Username,
 		}
 	})
-	return types.RoomInfoMessage{
+	return message.RoomInfoMessage{
 		Type:        "room_info",
 		PlayerCount: room.PlayerCount(),
 		PlayerList:  playerListInfo,
@@ -160,15 +158,15 @@ func validPlayerJoin(room *Room, playerUUID string) (*Player, error) {
 	player, exist := FindSession(playerUUID)
 
 	if !exist {
-		return nil, errors.NewLoggableError(fmt.Sprintf("Player session not exist '%s'", playerUUID), errors.ERROR)
+		return nil, fmt.Errorf("Player session not exist '%s'", playerUUID)
 	}
 
 	if len(room.Players) >= MAX_PLAYERS {
-		return player, errors.NewClientError("The current game room is full.")
+		return player, errors.New("The current game room is full.")
 	}
 
 	if _, inRoom := room.FindPlayerInRoom(&player.Username); inRoom {
-		return player, errors.NewClientError(fmt.Sprintf("A player name '%s' is already in this room", player.Username))
+		return player, fmt.Errorf("A player name '%s' is already in this room", player.Username)
 	}
 
 	return player, nil
@@ -193,13 +191,13 @@ func (room *Room) PlayerCount() int {
 func (room *Room) TryStartGame(playerUUID *string) error {
 	player, exist := room.FindPlayerInRoomByUUID(playerUUID)
 	if !exist || room.OwnerUUID != player.SessionUUID {
-		return errors.NewClientError("Invalid player")
+		return errors.New("Invalid player")
 	}
 	if err := room.engine.StartGame(); err != nil {
 		return err
 	}
 	if room.PlayerCount() < MIN_PLAYERS_TO_START {
-		return errors.NewClientError("Require at least 4 players to start the game.")
+		return errors.New("Require at least 4 players to start the game.")
 	}
 
 	room.PublishRoomInfo()
@@ -224,16 +222,16 @@ func (room *Room) dealCards() error {
 }
 
 func (room *Room) validGameState() error {
-	if room.engine.GetState() != types.StateInGame {
-		return errors.NewClientError("Game is not started")
+	if room.engine.GetState() != liar.StateInGame {
+		return errors.New("Game is not started")
 	}
 
 	return nil
 }
 
-func (room *Room) PlayerPlaceCard(playerUUID string, cards []types.Card) error {
-	if err := room.engine.ValidStateAndAction(types.PlaceCards); err != nil {
-		return errors.NewClientError(err.Error())
+func (room *Room) PlayerPlaceCard(playerUUID string, cards []liar.Card) error {
+	if err := room.engine.ValidStateAndAction(liar.PlaceCards); err != nil {
+		return err
 	}
 
 	p, err := room.validatePlayerTurn(playerUUID)
@@ -244,10 +242,10 @@ func (room *Room) PlayerPlaceCard(playerUUID string, cards []types.Card) error {
 	currentPlayerCards := room.playerCards[p]
 	remainCards, err := room.engine.PlaceCard(currentPlayerCards, cards)
 	if err != nil {
-		return errors.NewClientError(err.Error())
+		return err
 	}
 
-	msg := types.PlayerPlaceCardsMessage{
+	msg := message.RoomBoardPlayerPlaceCardMessage{
 		Type:     "player_place_cards",
 		Username: p.Username,
 		Number:   len(cards),
@@ -265,8 +263,8 @@ func (room *Room) PlayerPlaceCard(playerUUID string, cards []types.Card) error {
 }
 
 func (room *Room) PlayerDeclare(playerUUID string, doubt bool) error {
-	if err := room.engine.ValidStateAndAction(types.Doubt); err != nil {
-		return errors.NewClientError(err.Error())
+	if err := room.engine.ValidStateAndAction(liar.Doubt); err != nil {
+		return err
 	}
 
 	p, err := room.validatePlayerTurn(playerUUID)
@@ -277,13 +275,13 @@ func (room *Room) PlayerDeclare(playerUUID string, doubt bool) error {
 	// If the current player choice to doubt
 	lastPlayer := room.Players[room.GetLastPlayerIndex()]
 	result := room.engine.Declare(doubt)
-	msg := types.RoomBoardCastDeclareMessage{
+	msg := message.RoomBoardCastDeclareMessage{
 		Refname: p.Username,
 		Suspect: lastPlayer.Username,
 		Result:  result,
 	}
 	SendPublicMessageToPlayers(room, msg)
-	if result == types.Lied {
+	if result == liar.Lied {
 		err := room.killPlayer(room.Players[room.GetLastPlayerIndex()])
 		if err != nil {
 			return err
@@ -360,11 +358,11 @@ func (room *Room) GetPlayerIndex(p *Player) int {
 func (room *Room) validatePlayerTurn(playerUUID string) (*Player, error) {
 	p, exist := FindSession(playerUUID)
 	if !exist {
-		return nil, errors.NewClientError("Not existed player")
+		return nil, errors.New("Not existed player")
 	}
 
 	if i := room.GetPlayerIndex(p); i == -1 || i != room.CurrentPlayerIndex {
-		return nil, errors.NewClientError("Not your turn")
+		return nil, errors.New("Not your turn")
 	}
 
 	return p, nil
@@ -376,6 +374,6 @@ func (room *Room) getCurrentSurivals() int {
 	})
 }
 
-func (room *Room) GetCurrentAction() types.GameAction {
+func (room *Room) GetCurrentAction() liar.GameAction {
 	return room.engine.CurrentAction
 }

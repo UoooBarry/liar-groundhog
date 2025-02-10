@@ -1,87 +1,113 @@
 package ws
 
 import (
+	"encoding/json"
 	"fmt"
 
-	"github.com/gorilla/websocket"
 	appErrors "uooobarry/liar-groundhog/internal/errors"
 	"uooobarry/liar-groundhog/internal/liar"
+	"uooobarry/liar-groundhog/internal/message"
 	"uooobarry/liar-groundhog/internal/session"
-	"uooobarry/liar-groundhog/internal/types"
-	"uooobarry/liar-groundhog/internal/utils"
+
+	"github.com/gorilla/websocket"
 )
 
-func handleRoomCreate(conn *websocket.Conn, msg types.Message) error {
+func handleRoomCreate(conn *websocket.Conn, msg message.RoomCreateMessage) error {
 	engine := liar.New()
 	room, err := session.CreateRoom(msg.SessionUUID, &engine)
 	if err != nil {
 		return err
 	}
-	response := types.Message{
-		Type:     "room_create",
-		RoomUUID: room.RoomUUID,
-		Content:  "Room create successful",
+	response := message.RoomOpMessage{
+		Message: message.Message{
+			Type:    "room_create",
+			Content: "Room create successful",
+		},
+		RoomUUID:    room.RoomUUID,
+		SessionUUID: msg.SessionUUID,
 	}
-	utils.SendResponse(conn, response)
+	message.SendResponse(conn, response)
 	return nil
 }
 
-func handleRoomJoin(conn *websocket.Conn, msg types.Message) error {
+func handleRoomJoin(conn *websocket.Conn, msg message.RoomOpMessage) error {
 	room, exist := session.FindRoom(&msg.RoomUUID)
 	if !exist {
-		return appErrors.NewClientError(fmt.Sprintf("Room ID '%s' does not exist", msg.RoomUUID))
+		return fmt.Errorf("Room ID '%s' does not exist", msg.RoomUUID)
 	}
 	if err := room.AddPlayer(msg.SessionUUID); err != nil {
 		return err
 	}
 
-	response := types.Message{
-		Type:     "room_join",
+	response := message.RoomOpMessage{
+		Message: message.Message{
+			Type:    "room_join",
+			Content: "Room join successful",
+		},
 		RoomUUID: room.RoomUUID,
-		Content:  "Room join successful",
 	}
-	utils.SendResponse(conn, response)
+	message.SendResponse(conn, response)
 	return nil
 }
 
-func handleRoomStart(conn *websocket.Conn, msg types.Message) error {
-    room, exist := session.FindRoom(&msg.RoomUUID)
+func handleRoomStart(conn *websocket.Conn, msg message.RoomOpMessage) error {
+	room, exist := session.FindRoom(&msg.RoomUUID)
 	if !exist {
-		return appErrors.NewClientError(fmt.Sprintf("Room ID '%s' does not exist", msg.RoomUUID))
+		return appErrors.NewClientError("Room not existed")
 	}
 
-    if err := room.TryStartGame(&msg.SessionUUID); err != nil {
-        return err
-    }
+	if err := room.TryStartGame(&msg.SessionUUID); err != nil {
+		return err
+	}
+	response := message.RoomOpMessage{
+		Message: message.Message{
+			Type:    "room_start",
+			Content: "Room start successful",
+		},
+		RoomUUID:    room.RoomUUID,
+		SessionUUID: msg.SessionUUID,
+	}
+	message.SendResponse(conn, response)
 
-    response := types.Message{
-    	Type:     "room_start",
-		RoomUUID: room.RoomUUID,
-		Content:  "Room start successful",
-        SessionUUID: msg.SessionUUID,
-    }
-    utils.SendResponse(conn, response)
-
-    return nil
+	return nil
 }
 
-func handleRoomPlaceCard (conn *websocket.Conn, msg types.Message) error {
-    room, exist := session.FindRoom(&msg.RoomUUID)
+func handlePlayerAction(conn *websocket.Conn, msg message.PlayerActionMessage) error {
+	room, exist := session.FindRoom(&msg.RoomUUID)
 	if !exist {
 		return appErrors.NewClientError(fmt.Sprintf("Room ID '%s' does not exist", msg.RoomUUID))
 	}
+	switch msg.ActionType {
+	case "player_place_cards":
+		var playerPlaceCardMsg message.PlayerPlaceCardsMessage
+		if err := json.Unmarshal(msg.RawData, &playerPlaceCardMsg); err != nil {
+			return err
+		}
 
-    err := room.PlayerPlaceCard(msg.SessionUUID, msg.Cards)
-    if err != nil {
-        return err
-    }
-    response := types.Message{
-    	Type:     "player_place_cards",
-		RoomUUID: room.RoomUUID,
-		Content:  "Success",
-        SessionUUID: msg.SessionUUID,
-    }
-    utils.SendResponse(conn, response)
+		rsp, err := handleRoomPlaceCard(conn, room, playerPlaceCardMsg)
+		if err != nil {
+			return err
+		}
+		message.SendResponse(conn, rsp)
+	}
 
-    return nil
+	return nil
+}
+
+func handleRoomPlaceCard(conn *websocket.Conn, room *session.Room, msg message.PlayerPlaceCardsMessage) (*message.PlayerPlaceCardsMessage, error) {
+	if err := room.PlayerPlaceCard(msg.SessionUUID, msg.Cards); err != nil {
+		return nil, err
+	}
+	response := message.PlayerPlaceCardsMessage{
+		PlayerActionMessage: message.PlayerActionMessage{
+			ActionType: "player_place_cards",
+			RoomUUID:   room.RoomUUID,
+			Message: message.Message{
+				Type:    "player_action",
+				Content: "Success",
+			},
+			SessionUUID: msg.SessionUUID,
+		},
+	}
+	return &response, nil
 }

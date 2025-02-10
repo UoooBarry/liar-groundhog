@@ -98,7 +98,14 @@ function start() {
         // if all logged in
         if (people.every((p) => p.sessionuuid && p.sessionuuid !== "" && !p.roomuuid)) {
             // barry create the room
+            console.log(createRoomMessage(people[0]))
             socket.send(JSON.stringify(createRoomMessage(people[0])))
+        }
+
+        if (response.type === 'error') {
+            console.error(response.content);
+            socket.close();
+            return;
         }
     });
 }

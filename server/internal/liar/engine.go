@@ -6,51 +6,50 @@ import (
 	"math/rand"
 	"slices"
 	"time"
-	"uooobarry/liar-groundhog/internal/types"
 	"uooobarry/liar-groundhog/internal/utils"
 )
 
 const TotalCardCount = 26
 
-var CardPartition = map[types.Card]int{
-	types.Jack:        6,
-	types.Queen:       6,
-	types.King:        6,
-	types.Ace:         6,
-	types.BigJoker:    1,
-	types.LittleJoker: 1,
+var CardPartition = map[Card]int{
+	Jack:        6,
+	Queen:       6,
+	King:        6,
+	Ace:         6,
+	BigJoker:    1,
+	LittleJoker: 1,
 }
 
 type Engine struct {
-	State          types.GameState
-	Cards          []types.Card
-	CurrentAction  types.GameAction
-	LastPlaceCards []types.Card
-	BetCard        types.Card
+	State          GameState
+	Cards          []Card
+	CurrentAction  GameAction
+	LastPlaceCards []Card
+	BetCard        Card
 }
 
 func New() Engine {
-	return Engine{State: types.StatePreparing,
+	return Engine{State: StatePreparing,
 		Cards:         newPackOfCards(),
-		CurrentAction: types.PlaceCards,
-		BetCard:       types.Ace}
+		CurrentAction: PlaceCards,
+		BetCard:       Ace}
 }
 
-func newPackOfCards() []types.Card {
-	cards := make([]types.Card, 0, TotalCardCount)
+func newPackOfCards() []Card {
+	cards := make([]Card, 0, TotalCardCount)
 	for card, count := range CardPartition {
-		cards = append(cards, slices.Repeat([]types.Card{card}, count)...)
+		cards = append(cards, slices.Repeat([]Card{card}, count)...)
 	}
 
 	return cards
 }
 
-func (e *Engine) ValidStateAndAction(action types.GameAction) error {
+func (e *Engine) ValidStateAndAction(action GameAction) error {
 	if e.CurrentAction != action {
 		return errors.New("Not a valid action")
 	}
 
-	if e.State != types.StateInGame {
+	if e.State != StateInGame {
 		return errors.New("The game is not running")
 	}
 
@@ -58,10 +57,10 @@ func (e *Engine) ValidStateAndAction(action types.GameAction) error {
 }
 
 func (e *Engine) nextAction() {
-	if e.CurrentAction == types.Doubt {
-		e.CurrentAction = types.PlaceCards
+	if e.CurrentAction == Doubt {
+		e.CurrentAction = PlaceCards
 	} else {
-		e.CurrentAction = types.Doubt
+		e.CurrentAction = Doubt
 	}
 }
 
@@ -77,7 +76,7 @@ func (e *Engine) Shuffle() {
 	}
 }
 
-func (e *Engine) DealCards(num int) ([]types.Card, error) {
+func (e *Engine) DealCards(num int) ([]Card, error) {
 	if len(e.Cards) < num {
 		return e.Cards, errors.New("not enough cards to deal")
 	}
@@ -88,41 +87,41 @@ func (e *Engine) DealCards(num int) ([]types.Card, error) {
 }
 
 func (e *Engine) StartGame() error {
-	if e.State != types.StatePreparing {
+	if e.State != StatePreparing {
 		return errors.New("cannot start game: game is not in the preparing state")
 	}
 
 	e.Shuffle()
-	e.State = types.StateInGame
+	e.State = StateInGame
 	fmt.Println("Game has started")
 	fmt.Println(e.Cards)
 	return nil
 }
 
 func (e *Engine) EndGame() error {
-	if e.State != types.StateInGame {
+	if e.State != StateInGame {
 		return errors.New("cannot end game: game is not in progress")
 	}
-	e.State = types.StateSettlement
+	e.State = StateSettlement
 	fmt.Println("Game is now in settlement state")
 	return nil
 }
 
 func (e *Engine) ResetGame() error {
-	if e.State != types.StateSettlement {
+	if e.State != StateSettlement {
 		return errors.New("cannot reset game: game is not in the settlement state")
 	}
-	e.State = types.StatePreparing
+	e.State = StatePreparing
 	e.Cards = newPackOfCards()
 	fmt.Println("Game has been reset to preparing state")
 	return nil
 }
 
-func (e *Engine) GetState() types.GameState {
+func (e *Engine) GetState() GameState {
 	return e.State
 }
 
-func (e *Engine) PlaceCard(holdingCards []types.Card, placedCards []types.Card) ([]types.Card, error) {
+func (e *Engine) PlaceCard(holdingCards []Card, placedCards []Card) ([]Card, error) {
 	for _, card := range placedCards {
 		i := slices.Index(holdingCards, card)
 		if i < 0 {
@@ -139,19 +138,19 @@ func (e *Engine) PlaceCard(holdingCards []types.Card, placedCards []types.Card) 
 	return holdingCards, nil
 }
 
-func (e *Engine) Declare(doubt bool) types.DeclareResult {
-	var result types.DeclareResult
+func (e *Engine) Declare(doubt bool) DeclareResult {
+	var result DeclareResult
 	if !doubt {
-		result = types.Skip
+		result = Skip
 	}
 
 	// Every cards it claims are the goal card
-	if utils.SliceIsAll(e.LastPlaceCards, func(c types.Card) bool {
-		return c == e.BetCard || c == types.BigJoker || c == types.LittleJoker
+	if utils.SliceIsAll(e.LastPlaceCards, func(c Card) bool {
+		return c == e.BetCard || c == BigJoker || c == LittleJoker
 	}) {
-		result = types.Truthful
+		result = Truthful
 	} else {
-		result = types.Lied
+		result = Lied
 	}
 
 	e.nextAction()

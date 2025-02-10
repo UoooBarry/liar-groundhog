@@ -1,14 +1,14 @@
 package ws
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"sync"
 
 	appErrors "uooobarry/liar-groundhog/internal/errors"
+	"uooobarry/liar-groundhog/internal/message"
 	"uooobarry/liar-groundhog/internal/session"
-	"uooobarry/liar-groundhog/internal/types"
-	"uooobarry/liar-groundhog/internal/utils"
 
 	"github.com/gorilla/websocket"
 )
@@ -28,7 +28,7 @@ var rooms = struct {
 	data: make(map[string][]string),
 }
 
-func validateUsername(msg types.Message) error {
+func validateUsername(msg message.LoginMessage) error {
 	if msg.Username == "" {
 		return appErrors.NewClientError("Username is required for login")
 	}
@@ -37,7 +37,7 @@ func validateUsername(msg types.Message) error {
 }
 
 // handleLogin handles the login request
-func handleLogin(conn *websocket.Conn, msg types.Message) (string, error) {
+func handleLogin(conn *websocket.Conn, msg message.LoginMessage) (string, error) {
 	if err := validateUsername(msg); err != nil {
 		return "", err
 	}
@@ -45,13 +45,15 @@ func handleLogin(conn *websocket.Conn, msg types.Message) (string, error) {
 	user := session.CreateSession(conn, msg.Username)
 
 	// Send response to the client
-	response := types.Message{
-		Type:        "login",
+	response := message.LoginSuccessMessage{
+		Message: message.Message{
+			Content: "Login successful",
+			Type:    "login",
+		},
 		Username:    msg.Username,
 		SessionUUID: user.SessionUUID,
-		Content:     "Login successful",
 	}
-	utils.SendResponse(conn, response)
+	message.SendResponse(conn, response)
 
 	return user.SessionUUID, nil
 }
@@ -59,7 +61,7 @@ func handleLogin(conn *websocket.Conn, msg types.Message) (string, error) {
 // Helper function to handle errors in a consistent manner
 func handleMessageError(conn *websocket.Conn, err error) {
 	if err != nil {
-		appErrors.HandleError(conn, err)
+		HandleError(conn, err)
 	}
 }
 
@@ -83,31 +85,61 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	// Loop to read and write messages
 	for {
-		var msg types.Message
-		var err error
-		// Read JSON message from client
-		formatErr := conn.ReadJSON(&msg)
-		if formatErr != nil {
-			appErrors.HandleError(conn, appErrors.NewLoggableError("Read Error: "+formatErr.Error(), appErrors.WARN))
-			break
-		}
+        _, rawMsg, err := conn.ReadMessage()
+        if err != nil {
+            log.Println("ReadMessage Error:", err)
+            return
+        }
 
+		var msg message.Message
+        if err := json.Unmarshal(rawMsg, &msg); err != nil {
+            log.Println("JSON Unmarshal Error:", err)
+            return
+        }
+        msg.RawData = rawMsg
+        
 		switch msg.Type {
 		case "login":
-			userUUID, err = handleLogin(conn, msg)
+			var loginMsg message.LoginMessage
+			if err := json.Unmarshal(msg.RawData, &loginMsg); err != nil {
+				HandleError(conn, appErrors.NewLoggableError("Parse Error: "+err.Error(), appErrors.WARN))
+			}
+
+			userUUID, err = handleLogin(conn, loginMsg)
 			handleMessageError(conn, err)
 		case "room_create":
-			err = handleRoomCreate(conn, msg)
+            var roomCreateMessage message.RoomCreateMessage
+			if err := json.Unmarshal(msg.RawData, &roomCreateMessage); err != nil {
+				HandleError(conn, appErrors.NewLoggableError("Parse Error: "+err.Error(), appErrors.WARN))
+			}
+            log.Println(roomCreateMessage)
+            log.Println(roomCreateMessage.SessionUUID)
+
+			err = handleRoomCreate(conn, roomCreateMessage)
 			handleMessageError(conn, err)
 		case "room_join":
-			err = handleRoomJoin(conn, msg)
+			var roomJoinMsg message.RoomOpMessage
+			if err := json.Unmarshal(msg.RawData, &roomJoinMsg); err != nil {
+				HandleError(conn, appErrors.NewLoggableError("Parse Error: "+err.Error(), appErrors.WARN))
+			}
+
+			err = handleRoomJoin(conn, roomJoinMsg)
 			handleMessageError(conn, err)
-        case "room_start":
-            err = handleRoomStart(conn, msg)
-            handleMessageError(conn, err)
-        case "game_place_card":
-            err = handleRoomPlaceCard(conn, msg)
-            handleMessageError(conn, err)
+		case "room_start":
+            var roomMsg message.RoomOpMessage
+			if err := json.Unmarshal(msg.RawData, &roomMsg); err != nil {
+				HandleError(conn, appErrors.NewLoggableError("Parse Error: "+err.Error(), appErrors.WARN))
+			}
+
+			err = handleRoomStart(conn, roomMsg)
+			handleMessageError(conn, err)
+		case "player_action":
+            var actionMsg message.PlayerActionMessage
+			if err := json.Unmarshal(msg.RawData, &actionMsg); err != nil {
+				HandleError(conn, appErrors.NewLoggableError("Parse Error: "+err.Error(), appErrors.WARN))
+			}
+			err = handlePlayerAction(conn, actionMsg)
+			handleMessageError(conn, err)
 		default:
 			handleMessageError(conn, appErrors.NewClientError("Unknown message type"))
 		}
