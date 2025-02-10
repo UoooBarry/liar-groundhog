@@ -1,7 +1,6 @@
 package message
 
 import (
-	"encoding/json"
 	"uooobarry/liar-groundhog/internal/liar"
 )
 
@@ -12,10 +11,9 @@ type PublicPlayerMessage struct {
 }
 
 type Message struct {
-	Type     string          `json:"type"`               // Type of the message (e.g., "login")
-	Username string          `json:"username,omitempty"` // Username for login
-	Content  string          `json:"content,omitempty"`  // Additional content
-	RawData  json.RawMessage `json:"-"`
+	Type     string `json:"type"`               // Type of the message (e.g., "login")
+	Username string `json:"username,omitempty"` // Username for login
+	Content  string `json:"content,omitempty"`  // Additional content
 }
 
 type LoginMessage struct {

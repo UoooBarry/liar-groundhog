@@ -1,7 +1,6 @@
 package ws
 
 import (
-	"encoding/json"
 	"fmt"
 
 	appErrors "uooobarry/liar-groundhog/internal/errors"
@@ -72,29 +71,32 @@ func handleRoomStart(conn *websocket.Conn, msg message.RoomOpMessage) error {
 	return nil
 }
 
-func handlePlayerAction(conn *websocket.Conn, msg message.PlayerActionMessage) error {
+func handlePlayerAction(conn *websocket.Conn, msg message.PlayerActionMessage, raw []byte) error {
 	room, exist := session.FindRoom(&msg.RoomUUID)
 	if !exist {
 		return appErrors.NewClientError(fmt.Sprintf("Room ID '%s' does not exist", msg.RoomUUID))
 	}
-	switch msg.ActionType {
-	case "player_place_cards":
-		var playerPlaceCardMsg message.PlayerPlaceCardsMessage
-		if err := json.Unmarshal(msg.RawData, &playerPlaceCardMsg); err != nil {
-			return err
-		}
+	parser, exist := actionParsers[msg.ActionType]
+	if exist {
+		parsed, err := parser(raw)
+        if err != nil {
+            return appErrors.NewLoggableError(err.Error(), appErrors.ERROR)
+        }
 
-		rsp, err := handleRoomPlaceCard(conn, room, playerPlaceCardMsg)
-		if err != nil {
-			return err
+		switch v := parsed.(type) {
+		case message.PlayerPlaceCardsMessage:
+			rsp, err := handleRoomPlaceCard(room, v)
+			if err != nil {
+				return err
+			}
+			message.SendResponse(conn, rsp)
 		}
-		message.SendResponse(conn, rsp)
 	}
 
 	return nil
 }
 
-func handleRoomPlaceCard(conn *websocket.Conn, room *session.Room, msg message.PlayerPlaceCardsMessage) (*message.PlayerPlaceCardsMessage, error) {
+func handleRoomPlaceCard(room *session.Room, msg message.PlayerPlaceCardsMessage) (*message.PlayerPlaceCardsMessage, error) {
 	if err := room.PlayerPlaceCard(msg.SessionUUID, msg.Cards); err != nil {
 		return nil, err
 	}
