@@ -3,7 +3,6 @@ package session
 import (
 	"errors"
 	"fmt"
-	"sync"
 
 	"uooobarry/liar-groundhog/internal/liar"
 	"uooobarry/liar-groundhog/internal/message"
@@ -13,13 +12,6 @@ import (
 const MAX_PLAYERS = 4
 const MIN_PLAYERS_TO_START = 4
 const BET_CARD = liar.Ace
-
-var rooms = struct {
-	sync.Mutex
-	data map[string]*Room // uuid -> Session
-}{
-	data: make(map[string]*Room),
-}
 
 type Room struct {
 	RoomUUID           string
@@ -40,13 +32,7 @@ func FindRoom(uuid string) (*Room, bool) {
 	return roomManager.FindRoom(uuid)
 }
 
-func (room *Room) FindPlayerInRoom(username *string) (*Player, bool) {
-	rooms.Lock()
-	defer rooms.Unlock()
-	if username == nil {
-		return nil, false
-	}
-
+func (room *Room) FindPlayerByUsername(username *string) (*Player, bool) {
 	for _, player := range room.Players {
 		if player.Username == *username {
 			return player, true
@@ -56,13 +42,7 @@ func (room *Room) FindPlayerInRoom(username *string) (*Player, bool) {
 	return nil, false
 }
 
-func (room *Room) FindPlayerInRoomByUUID(uuid *string) (*Player, bool) {
-	rooms.Lock()
-	defer rooms.Unlock()
-	if uuid == nil {
-		return nil, false
-	}
-
+func (room *Room) FindPlayerByUUID(uuid *string) (*Player, bool) {
 	for _, player := range room.Players {
 		if player.SessionUUID == *uuid {
 			return player, true
@@ -133,7 +113,7 @@ func validPlayerJoin(room *Room, playerUUID string) (*Player, error) {
 		return player, errors.New("The current game room is full.")
 	}
 
-	if _, inRoom := room.FindPlayerInRoom(&player.Username); inRoom {
+	if _, inRoom := room.FindPlayerByUsername(&player.Username); inRoom {
 		return player, fmt.Errorf("A player name '%s' is already in this room", player.Username)
 	}
 
@@ -157,7 +137,7 @@ func (room *Room) PlayerCount() int {
 }
 
 func (room *Room) TryStartGame(playerUUID *string) error {
-	player, exist := room.FindPlayerInRoomByUUID(playerUUID)
+	player, exist := room.FindPlayerByUUID(playerUUID)
 	if !exist || room.OwnerUUID != player.SessionUUID {
 		return errors.New("Invalid player")
 	}
