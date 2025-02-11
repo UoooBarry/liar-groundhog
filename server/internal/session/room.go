@@ -3,14 +3,11 @@ package session
 import (
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 
 	"uooobarry/liar-groundhog/internal/liar"
 	"uooobarry/liar-groundhog/internal/message"
-	"uooobarry/liar-groundhog/internal/utils"
-
-	"github.com/google/uuid"
+	"uooobarry/liar-groundhog/utils"
 )
 
 const MAX_PLAYERS = 4
@@ -36,38 +33,11 @@ type Room struct {
 }
 
 func CreateRoom(ownerUUID string, gameEngine *liar.Engine) (*Room, error) {
-	rooms.Lock()
-	defer rooms.Unlock()
-
-	owner, exist := FindSession(ownerUUID)
-
-	if !exist {
-		return nil, fmt.Errorf("Player session not exist '%s'", ownerUUID)
-	}
-	uuid := uuid.NewString()
-	room := &Room{RoomUUID: uuid,
-		engine:             *gameEngine,
-		CurrentPlayerIndex: 0,
-		OwnerUUID:          owner.SessionUUID,
-		BetCard:            BET_CARD,
-	}
-	rooms.data[uuid] = room
-	room.Players = append(room.Players, owner)
-	room.playerCards = make(map[*Player][]liar.Card)
-
-	log.Printf("Created room UUID '%s'", uuid)
-	return room, nil
+	return roomManager.CreateRoom(ownerUUID, gameEngine)
 }
 
-func FindRoom(uuid *string) (*Room, bool) {
-	rooms.Lock()
-	defer rooms.Unlock()
-	if uuid == nil {
-		return nil, false
-	}
-	room, exist := rooms.data[*uuid]
-
-	return room, exist
+func FindRoom(uuid string) (*Room, bool) {
+	return roomManager.FindRoom(uuid)
 }
 
 func (room *Room) FindPlayerInRoom(username *string) (*Player, bool) {
@@ -102,32 +72,30 @@ func (room *Room) FindPlayerInRoomByUUID(uuid *string) (*Player, bool) {
 	return nil, false
 }
 
-func SendPublicMessageToPlayers(room *Room, m any) {
+func (room *Room) Broadcast(msg message.MessageInterface) {
 	for _, player := range room.Players {
-		conn := player.Conn
-		if conn == nil {
-			continue
+		if player.Conn != nil {
+			message.SendResponse(player.Conn, msg)
 		}
-		message.SendResponse(conn, m)
+
 	}
 }
 
-func SendPrivateMessageToPlayer(room *Room, fn func(*Room, *Player) message.MessageInterface) {
+func (room *Room) SendPrivateMessages(messageFn func(*Room, *Player) message.MessageInterface) {
 	for _, player := range room.Players {
-		conn := player.Conn
-		if conn == nil {
-			continue
+		if player.Conn != nil {
+			message.SendResponse(player.Conn, messageFn(room, player))
 		}
-		message.SendResponse(conn, fn(room, player))
+
 	}
 }
 
 func (room *Room) PublishRoomInfo() {
-	SendPublicMessageToPlayers(room, GetInfoMessage(room))
+	room.Broadcast(GetInfoMessage(room))
 }
 
 func (room *Room) PublishPlayerHoldingCards() {
-	SendPrivateMessageToPlayer(room, GetUserCardMessages)
+	room.SendPrivateMessages(GetUserCardMessages)
 }
 
 func GetUserCardMessages(room *Room, p *Player) message.MessageInterface {
@@ -257,7 +225,7 @@ func (room *Room) PlayerPlaceCard(playerUUID string, cards []liar.Card) error {
 
 	room.nextRound()
 
-	SendPublicMessageToPlayers(room, msg)
+	room.Broadcast(msg)
 	room.PublishRoomInfo()
 	return nil
 }
@@ -280,7 +248,7 @@ func (room *Room) PlayerDeclare(playerUUID string, doubt bool) error {
 		Suspect: lastPlayer.Username,
 		Result:  result,
 	}
-	SendPublicMessageToPlayers(room, msg)
+	room.Broadcast(msg)
 	if result == liar.Lied {
 		err := room.killPlayer(room.Players[room.GetLastPlayerIndex()])
 		if err != nil {
@@ -316,6 +284,7 @@ func (room *Room) endGame() error {
 	if err := room.engine.EndGame(); err != nil {
 		return err
 	}
+	room.PublishRoomInfo()
 
 	return nil
 }

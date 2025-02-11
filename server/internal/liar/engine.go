@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"slices"
 	"time"
-	"uooobarry/liar-groundhog/internal/utils"
+	"uooobarry/liar-groundhog/utils"
 )
 
 const TotalCardCount = 26

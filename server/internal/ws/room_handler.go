@@ -30,7 +30,7 @@ func handleRoomCreate(conn *websocket.Conn, msg message.RoomCreateMessage) error
 }
 
 func handleRoomJoin(conn *websocket.Conn, msg message.RoomOpMessage) error {
-	room, exist := session.FindRoom(&msg.RoomUUID)
+	room, exist := session.FindRoom(msg.RoomUUID)
 	if !exist {
 		return fmt.Errorf("Room ID '%s' does not exist", msg.RoomUUID)
 	}
@@ -50,7 +50,7 @@ func handleRoomJoin(conn *websocket.Conn, msg message.RoomOpMessage) error {
 }
 
 func handleRoomStart(conn *websocket.Conn, msg message.RoomOpMessage) error {
-	room, exist := session.FindRoom(&msg.RoomUUID)
+	room, exist := session.FindRoom(msg.RoomUUID)
 	if !exist {
 		return appErrors.NewClientError("Room not existed")
 	}
@@ -72,7 +72,7 @@ func handleRoomStart(conn *websocket.Conn, msg message.RoomOpMessage) error {
 }
 
 func handlePlayerAction(conn *websocket.Conn, msg message.PlayerActionMessage, raw []byte) error {
-	room, exist := session.FindRoom(&msg.RoomUUID)
+	room, exist := session.FindRoom(msg.RoomUUID)
 	if !exist {
 		return appErrors.NewClientError(fmt.Sprintf("Room ID '%s' does not exist", msg.RoomUUID))
 	}
