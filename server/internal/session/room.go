@@ -198,10 +198,6 @@ func (room *Room) validGameState() error {
 }
 
 func (room *Room) PlayerPlaceCard(playerUUID string, cards []liar.Card) error {
-	if err := room.engine.ValidStateAndAction(liar.PlaceCards); err != nil {
-		return err
-	}
-
 	p, err := room.validatePlayerTurn(playerUUID)
 	if err != nil {
 		return err
@@ -231,10 +227,6 @@ func (room *Room) PlayerPlaceCard(playerUUID string, cards []liar.Card) error {
 }
 
 func (room *Room) PlayerDeclare(playerUUID string, doubt bool) error {
-	if err := room.engine.ValidStateAndAction(liar.Doubt); err != nil {
-		return err
-	}
-
 	p, err := room.validatePlayerTurn(playerUUID)
 	if err != nil {
 		return err
@@ -242,7 +234,11 @@ func (room *Room) PlayerDeclare(playerUUID string, doubt bool) error {
 
 	// If the current player choice to doubt
 	lastPlayer := room.Players[room.GetLastPlayerIndex()]
-	result := room.engine.Declare(doubt)
+	result, err := room.engine.Declare(doubt)
+    if err != nil {
+        return err
+    }
+
 	msg := message.RoomBoardCastDeclareMessage{
 		Refname: p.Username,
 		Suspect: lastPlayer.Username,

@@ -13,7 +13,7 @@ import (
 
 func handleRoomCreate(conn *websocket.Conn, msg message.RoomCreateMessage) error {
 	engine := liar.New()
-	room, err := session.CreateRoom(msg.SessionUUID, &engine)
+	room, err := session.CreateRoom(msg.SessionUUID, engine)
 	if err != nil {
 		return err
 	}

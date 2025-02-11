@@ -73,13 +73,15 @@ func TestEngine_PlaceCards(t *testing.T) {
 
 	t.Run("Not able to place cards that not holding", func(t *testing.T) {
 		engine := liar.New()
+        engine.StartGame()
 		_, err := engine.PlaceCard([]liar.Card{liar.Ace}, []liar.Card{liar.Ace, liar.BigJoker})
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "You do not have big_joker")
+		assert.Contains(t, err.Error(), "player does not hold specified card: big_joker")
 	})
 
 	t.Run("Able to calculate the remain cards", func(t *testing.T) {
 		engine := liar.New()
+        engine.StartGame()
 		remains, err := engine.PlaceCard([]liar.Card{liar.Ace, liar.BigJoker}, []liar.Card{liar.Ace})
 		assert.NoError(t, err)
 		assert.Equal(t, []liar.Card{liar.BigJoker}, remains)
@@ -88,12 +90,14 @@ func TestEngine_PlaceCards(t *testing.T) {
 
 func TestEngine_Declare(t *testing.T) {
 	engine := liar.New()
+    engine.StartGame()
 
 	t.Run("Joker can be count as the bet card", func(t *testing.T) {
 		_, err := engine.PlaceCard([]liar.Card{liar.Ace, liar.BigJoker}, []liar.Card{liar.Ace, liar.BigJoker})
 		assert.NoError(t, err)
 		// Declare result will be truthful
-		result := engine.Declare(true)
+		result, err := engine.Declare(true)
+        assert.NoError(t, err)
 		assert.Equal(t, liar.Truthful, result)
 	})
 
@@ -101,7 +105,8 @@ func TestEngine_Declare(t *testing.T) {
 		_, err := engine.PlaceCard([]liar.Card{liar.Ace, liar.King}, []liar.Card{liar.King})
 		assert.NoError(t, err)
 		// Declare result will be truthful
-		result := engine.Declare(true)
+		result, err := engine.Declare(true)
+        assert.NoError(t, err)
 		assert.Equal(t, liar.Lied, result)
 	})
 }
@@ -109,6 +114,7 @@ func TestEngine_Declare(t *testing.T) {
 func TestEngine_DealCards(t *testing.T) {
 	// Initialize the engine
 	engine := liar.New()
+    engine.StartGame()
 
 	// Initial deck size
 	initialDeckSize := len(engine.Cards)
@@ -148,6 +154,7 @@ func TestEngine_DealCards(t *testing.T) {
 
 func TestEngine_GameAction(t *testing.T) {
 	engine := liar.New()
+    engine.StartGame()
 
 	t.Run("Game round is correctly update", func(t *testing.T) {
 		// Round one

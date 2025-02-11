@@ -17,7 +17,7 @@ func TestRoom_AddPlayer(t *testing.T) {
 	playerUUID := player.SessionUUID
 	gameEngine := liar.New()
 
-	room, err := session.CreateRoom(playerUUID, &gameEngine)
+	room, err := session.CreateRoom(playerUUID, gameEngine)
 
 	t.Run("Added owner successfully", func(t *testing.T) {
 		assert.NoError(t, err)
