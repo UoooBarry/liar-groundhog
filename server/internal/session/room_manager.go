@@ -48,4 +48,3 @@ func (rm *RoomManager) FindRoom(uuid string) (*Room, bool) {
 	defer rm.Unlock()
 	return rm.rooms[uuid], rm.rooms[uuid] != nil
 }
-

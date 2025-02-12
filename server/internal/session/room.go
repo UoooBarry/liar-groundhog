@@ -66,7 +66,6 @@ func (room *Room) SendPrivateMessages(messageFn func(*Room, *Player) message.Mes
 		if player.Conn != nil {
 			message.SendResponse(player.Conn, messageFn(room, player))
 		}
-
 	}
 }
 
@@ -215,9 +214,9 @@ func (room *Room) PlayerDeclare(playerUUID string, doubt bool) error {
 	// If the current player choice to doubt
 	lastPlayer := room.Players[room.GetLastPlayerIndex()]
 	result, err := room.engine.Declare(doubt)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
 	msg := message.RoomBoardCastDeclareMessage{
 		Refname: p.Username,

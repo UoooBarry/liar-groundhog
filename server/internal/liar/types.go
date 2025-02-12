@@ -11,15 +11,15 @@ const (
 )
 
 const (
-    Doubt GameAction = "doubt"
-    PlaceCards GameAction = "place_cards"
+	Doubt      GameAction = "doubt"
+	PlaceCards GameAction = "place_cards"
 )
 
 type GameEngine interface {
-    StartGame() error 
-    ResetGame() error 
-    EndGame() error
-    GetState() GameState
+	StartGame() error
+	ResetGame() error
+	EndGame() error
+	GetState() GameState
 }
 
 type Card string
@@ -38,5 +38,5 @@ type DeclareResult string
 const (
 	Truthful DeclareResult = "truthful"
 	Lied     DeclareResult = "lied"
-    Skip     DeclareResult = "skip"
+	Skip     DeclareResult = "skip"
 )

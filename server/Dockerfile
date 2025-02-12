@@ -4,13 +4,14 @@ FROM golang:1.23.4-alpine AS base
 # Set the working directory
 WORKDIR /app
 
+COPY go.mod go.sum ./
+RUN go mod download
+
 # Copy the entire project folder into the container
 COPY . .
 
 # Expose the application's port
 EXPOSE 8080
-
-RUN go mod download
 
 # Production
 FROM base AS prod
