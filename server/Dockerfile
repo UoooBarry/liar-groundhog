@@ -15,7 +15,7 @@ EXPOSE 8080
 
 # Production
 FROM base AS prod
-RUN go build -o ./dist/liar-groundhog
+RUN go build -o ./dist/liar-groundhog cmd/server/main.go
 CMD ["./dist/liar-groundhog"]
 
 # Development

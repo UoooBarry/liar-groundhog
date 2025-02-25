@@ -7,38 +7,22 @@ import (
 
 type MessageHandler func([]byte) (interface{}, error)
 
+// 生成解析函数的工厂函数
+func createParser(msg interface{}) MessageHandler {
+	return func(data []byte) (interface{}, error) {
+		err := json.Unmarshal(data, msg)
+		return msg, err
+	}
+}
+
 var messageParsers = map[string]MessageHandler{
-	"login": func(data []byte) (interface{}, error) {
-		var msg message.LoginMessage
-		err := json.Unmarshal(data, &msg)
-		return msg, err
-	},
-	"room_create": func(data []byte) (interface{}, error) {
-		var msg message.RoomCreateMessage
-		err := json.Unmarshal(data, &msg)
-		return msg, err
-	},
-	"room_join": func(data []byte) (interface{}, error) {
-		var msg message.RoomOpMessage
-		err := json.Unmarshal(data, &msg)
-		return msg, err
-	},
-	"room_start": func(data []byte) (interface{}, error) {
-		var msg message.RoomOpMessage
-		err := json.Unmarshal(data, &msg)
-		return msg, err
-	},
-	"player_action": func(data []byte) (interface{}, error) {
-		var msg message.PlayerActionMessage
-		err := json.Unmarshal(data, &msg)
-		return msg, err
-	},
+	"login":         createParser(&message.LoginMessage{}),
+	"room_create":   createParser(&message.RoomCreateMessage{}),
+	"room_join":     createParser(&message.RoomOpMessage{}),
+	"room_start":    createParser(&message.RoomOpMessage{}),
+	"player_action": createParser(&message.PlayerActionMessage{}),
 }
 
 var actionParsers = map[string]MessageHandler{
-	"player_place_cards": func(data []byte) (interface{}, error) {
-		var msg message.PlayerActionMessage
-		err := json.Unmarshal(data, &msg)
-		return msg, err
-	},
+	"player_place_cards": createParser(&message.PlayerActionMessage{}),
 }

@@ -103,27 +103,28 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			}
 
 			switch v := parsedMsg.(type) {
-			case message.LoginMessage:
-				userUUID, err = handleLogin(conn, v)
+			case *message.LoginMessage:
+				userUUID, err = handleLogin(conn, *v)
 				handleMessageError(conn, err)
-			case message.RoomCreateMessage:
-				err = handleRoomCreate(conn, v)
+			case *message.RoomCreateMessage:
+				err = handleRoomCreate(conn, *v)
 				handleMessageError(conn, err)
-			case message.RoomOpMessage:
+			case *message.RoomOpMessage:
 				if msg.Type == "room_join" {
-					err = handleRoomJoin(conn, v)
+					err = handleRoomJoin(conn, *v)
 				} else {
-					err = handleRoomStart(conn, v)
+					err = handleRoomStart(conn, *v)
 				}
 				handleMessageError(conn, err)
-			case message.PlayerActionMessage:
-                err = handlePlayerAction(conn, v, rawMsg)
+			case *message.PlayerActionMessage:
+				err = handlePlayerAction(conn, *v, rawMsg)
 				handleMessageError(conn, err)
 			default:
+				log.Println(v)
 				handleMessageError(conn, appErrors.NewClientError("Unknown message type"))
 			}
 		} else {
-            handleMessageError(conn, appErrors.NewLoggableError("Unknown param type", appErrors.ERROR))
-        }
+			handleMessageError(conn, appErrors.NewLoggableError("Unknown param type", appErrors.ERROR))
+		}
 	}
 }
